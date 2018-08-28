@@ -11,6 +11,7 @@ import shlex
 import argparse
 from subprocess import Popen, PIPE
 import pdb
+import itertools as it
 
 
 def getH(population):
@@ -20,13 +21,18 @@ def getH(population):
 
 
 def weightedMean(values, weights):
-    return sum([values[i] * weights[i] for i in xrange(len(values))]) / sum(weights)
+    return sum([values[i] * weights[i] 
+        for i in xrange(len(values))]) / sum(weights)
 
 
 def weightedVar(values, weights):
-    V1 = sum(weights)
+    V1 = float(sum(weights))
     xBar = weightedMean(values, weights)
-    return sum([weights[i] * (values[i] - xBar) ** 2 for i in xrange(len(values))]) / (V1 - 1)
+    try:
+        return sum([weights[i] * (values[i] - xBar) ** 2 
+            for i in xrange(len(values))]) / (V1 - 1)
+    except:
+        return 0
 
 
 def map_level(f, item, level):
@@ -64,6 +70,20 @@ def getOutput(cmd):
     return exitcode, out, err
 
 
+def getPi(populations):
+    A = tuple([tuple(x) for x in it.chain(*populations)])
+    segsites = range(len(A[0]))
+    terms = []
+    for i in range(len(A)):
+        p_i = float(sum(1 for x in A if x == A[i])) / float(len(A))
+        for j in range(i + 1, len(populations)):
+            p_j = float(sum(1 for x in A if x == A[j])) / float(len(A))
+            ids = tuple(it.chain(*[zip(segsites, A[x]) for x in (i, j)]))
+            pi_ij = float(len(set(ids)) - len(segsites)) / float(len(segsites))
+            terms.append(2 * p_i * p_j * pi_ij)
+    return sum(terms)
+            
+            
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("params", 
@@ -107,11 +127,12 @@ def main():
     popSizes = ["%d" % args.nchrom for x in range(args.npop)]
     total = len(params)
     count = 0
+    pi = []
     fst = []
     segsites = []
 
     with open(args.outfile, "w") as out:
-        out.write("mean.fst , var.fst\n")
+        out.write("mean.fst , var.fst, pi\n")
         for row in params:
             tau, rho = row
             const = rho / (tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho)
@@ -131,10 +152,13 @@ def main():
             print("\r%f percent complete" % ((float(count) - 1) /\
                 float(total) * 100) , end = "")
             if fst:
-                meanVar = "%f , %f\n" % (
-                        weightedMean(fst, segsites), weightedVar(fst, segsites))
+                meanVar = "%f , %f, %f\n" % (
+                        weightedMean(fst, segsites),
+                        weightedVar(fst, segsites),
+                        stat.mean(pi))
                 out.write(meanVar)
                 segsites = []
+                pi = []
                 fst = []
 
             for line in msOut:
@@ -145,19 +169,24 @@ def main():
                         i = 0
                         npop +=1
                         H.append(getH(population))
+                        populations.append(population)
                         population = []
                 elif line.strip() == "//":
                     if H:
                         fst.append(getFst(H, segsites, args.nchrom, npop))
+                        pi.append(getPi(populations))
                     i = 0 
                     npop = 0
                     H = []
+                    populations = []
                 elif line.startswith("segsites"):
                     segsites.append(int(line.lstrip("segsites: ")))
 
         fst.append(getFst(H, segsites, args.nchrom, npop))
-        meanVar = "%f , %f\n" % (
-                weightedMean(fst, segsites), weightedVar(fst, segsites))
+        meanVar = "%f , %f, %f\n" % (
+                weightedMean(fst, segsites),
+                weightedVar(fst, segsites),
+                stat.mean(pi))
         out.write(meanVar)
         print("\r%f percent complete" % (100))
         print("\n", end = "")
