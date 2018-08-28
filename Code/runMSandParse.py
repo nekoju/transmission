@@ -5,7 +5,6 @@
 
 from __future__ import print_function
 import sys
-import statistics as stat
 import re
 import shlex
 import argparse
@@ -15,14 +14,18 @@ import itertools as it
 
 
 def getH(population):
-    p = [stat.mean(x) for x in zip(*population)]
+    p = [weightedMean(x) for x in zip(*population)]
     H = [2 * freq * (1 - freq) for freq in p]
     return [p, H]
 
 
-def weightedMean(values, weights):
-    return sum([values[i] * weights[i] 
-        for i in xrange(len(values))]) / sum(weights)
+def weightedMean(values, weights = None):
+    values = [float(x) for x in values]
+    if weights:
+        return sum([values[i] * weights[i] 
+            for i in xrange(len(values))]) / sum(weights)
+    else:
+        return sum(values) / len(values)
 
 
 def weightedVar(values, weights):
@@ -44,12 +47,12 @@ def map_level(f, item, level):
 
 def getFst(H, segsites, nchrom, npop):
     HBySite = [zip(*x) for x in zip(*H)]
-    HBarPerSite = map_level(stat.mean, HBySite, 2)
+    HBarPerSite = map_level(weightedMean, HBySite, 2)
     pBar = HBarPerSite[0]
     Ht = [(nchrom * npop) / (nchrom * npop - 1)* 2 * p * (1 - p) for p in pBar]
     Hs = [nchrom / (nchrom - 1) * x for x in HBarPerSite[1]]
-    HtBar = stat.mean(Ht)
-    HsBar = stat.mean(Hs)
+    HtBar = weightedMean(Ht)
+    HsBar = weightedMean(Hs)
     return 1 - HsBar / HtBar
 
 
@@ -155,7 +158,7 @@ def main():
                 meanVar = "%f , %f, %f\n" % (
                         weightedMean(fst, segsites),
                         weightedVar(fst, segsites),
-                        stat.mean(pi))
+                        weightedMean(pi))
                 out.write(meanVar)
                 segsites = []
                 pi = []
@@ -186,7 +189,7 @@ def main():
         meanVar = "%f , %f, %f\n" % (
                 weightedMean(fst, segsites),
                 weightedVar(fst, segsites),
-                stat.mean(pi))
+                weightedMean(pi))
         out.write(meanVar)
         print("\r%f percent complete" % (100))
         print("\n", end = "")
