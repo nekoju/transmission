@@ -98,7 +98,8 @@ def main():
     with open(args.params) as pars:
         for line in pars:
             try:
-                params.append([float(x) for x in line.split(",")])
+                params.append([float(x) for x in 
+                    filter(None, line.strip().split(","))])
             except:
                 pass
 
@@ -106,6 +107,8 @@ def main():
     popSizes = ["%d" % args.nchrom for x in range(args.npop)]
     total = len(params)
     count = 0
+    fst = []
+    segsites = []
 
     with open(args.outfile, "w") as out:
         out.write("mean.fst , var.fst\n")
@@ -118,26 +121,20 @@ def main():
             cmd = " ".join(("ms %(total)d %(nsamp)d -t %(theta)f -I %(npop)d" % reps, 
              " ".join(str(args.nchrom) for x in range(args.npop)),
              "%(mig)f" % reps))
-            ms = getOutput(cmd)
-            msOut = ms[1].split("\n")
-
+            msOut = getOutput(cmd)[1].split("\n")
 
             population = []
-            fst = []
-            segsites = []
             H = []
             npop = 0
             count += 1
 
-            if count >= 1:
-                print("\r%f percent complete" % ((float(count) - 1) /\
-                    float(total) * 100) , end = "")
+            print("\r%f percent complete" % ((float(count) - 1) /\
+                float(total) * 100) , end = "")
             if fst:
                 meanVar = "%f , %f\n" % (
                         weightedMean(fst, segsites), weightedVar(fst, segsites))
                 out.write(meanVar)
                 segsites = []
-                H = []
                 fst = []
 
             for line in msOut:
