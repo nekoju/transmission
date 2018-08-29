@@ -11,6 +11,14 @@ import argparse
 from subprocess import Popen, PIPE
 import pdb
 import itertools as it
+from multiprocessing import Pool
+
+
+class Copier(object):
+    def __init__(self, arguments):
+        self.args = arguments
+    def __call__(self, pars):
+        getSummary(pars, self.args)
 
 
 def getH(population):
@@ -68,7 +76,6 @@ def getOutput(cmd):
     proc = Popen(args, stdout = PIPE, stderr = PIPE)
     out, err = proc.communicate()
     exitcode = proc.returncode
-
     return exitcode, out, err
 
 
@@ -86,10 +93,57 @@ def getPi(populations):
             pi_ij = float(len(set(ids)) - len(segsites)) / float(len(segsites))
             terms.append(p_i * p_j * pi_ij)
     return 2 * sum(terms)
-            
+
+
+def getSummary(row, args):
+    H = []
+    pi = []
+    fst = []
+    segsites = []
+    population = []
+    npop = 0
+    tau, rho = row
+    const = rho / (tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho)
+    reps = {"total": args.nchrom * args.npop, "nsamp": args.nsamp,
+         "theta": args.theta * const, "npop": args.npop, 
+         "mig": args.mig * const, "nchrom": args.nchrom}
+    cmd = " ".join(("ms %(total)d %(nsamp)d -t %(theta)f -I %(npop)d" % reps, 
+     " ".join(str(args.nchrom) for x in range(args.npop)),
+     "%(mig)f" % reps))
+    msOut = getOutput(cmd)[1].split("\n")
+
+    for line in msOut:
+        if ind.match(line):
+            population.append([float(x) for x in line.strip()])
+            i += 1
+            if i == args.nchrom:
+                i = 0
+                npop +=1
+                H.append(getH(population))
+                populations.append(population)
+                population = []
+        elif line.strip() == "//":
+            if H:
+                fst.append(getFst(H, segsites, args.nchrom, npop))
+                pi.append(getPi(populations))
+            i = 0 
+            npop = 0
+            H = []
+            populations = []
+        elif line.startswith("segsites"):
+            segsites.append(float(line.lstrip("segsites: ")))
+    fst.append(getFst(H, segsites, args.nchrom, npop))
+    pi.append(getPi(populations))
+    meanVar = "%f , %f, %f\n" % (
+            weightedMean(fst, segsites),
+            weightedVar(fst, segsites),
+            weightedMean(pi),
+            tau,
+            rho)
+    return meanVar
+           
             
 def main():
-    msTotal = 0.0
     parser = argparse.ArgumentParser()
     parser.add_argument("params", 
             help = "The path of a .csv file containing float values of tau and rho,\
@@ -115,6 +169,12 @@ def main():
             type = float,
             help = "Population migration parameter (2*Ne*m) for each simulation"
             )
+    parser.add_argument("-c",
+            "--ncore", 
+            nargs = "?",
+            default = "1",
+            type = int,
+            help = "Number of processing cores")
     parser.add_argument("outfile",
             help = "Output file")
     args = parser.parse_args()
@@ -128,77 +188,19 @@ def main():
             except:
                 pass
 
-    ind = re.compile('[01]+$')
     popSizes = ["%d" % args.nchrom for x in range(args.npop)]
-    total = len(params)
-    count = 0
-    pi = []
-    fst = []
-    segsites = []
+
+    pool = Pool(args.ncore)
+    pdb.set_trace()
+    summaries = pool.map(Copier(args), params)
 
     with open(args.outfile, "w") as out:
-        out.write("mean.fst , var.fst, pi\n")
-        for row in params:
-            tau, rho = row
-            const = rho / (tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho)
-            reps = {"total": args.nchrom * args.npop, "nsamp": args.nsamp,
-                 "theta": args.theta * const, "npop": args.npop, 
-                 "mig": args.mig * const, "nchrom": args.nchrom}
-            cmd = " ".join(("ms %(total)d %(nsamp)d -t %(theta)f -I %(npop)d" % reps, 
-             " ".join(str(args.nchrom) for x in range(args.npop)),
-             "%(mig)f" % reps))
-            msOut = getOutput(cmd)[1].split("\n")
-
-            population = []
-            H = []
-            npop = 0
-            count += 1
-
-            print("\r%f percent complete" % ((float(count) - 1) /\
-                float(total) * 100) , end = "")
-            if fst:
-                meanVar = "%f , %f, %f\n" % (
-                        weightedMean(fst, segsites),
-                        weightedVar(fst, segsites),
-                        weightedMean(pi))
-                out.write(meanVar)
-                segsites = []
-                pi = []
-                fst = []
-
-            for line in msOut:
-                if ind.match(line):
-                    population.append([float(x) for x in line.strip()])
-                    i += 1
-                    if i == args.nchrom:
-                        i = 0
-                        npop +=1
-                        H.append(getH(population))
-                        populations.append(population)
-                        population = []
-                elif line.strip() == "//":
-                    if H:
-                        fst.append(getFst(H, segsites, args.nchrom, npop))
-                        pi.append(getPi(populations))
-                    i = 0 
-                    npop = 0
-                    H = []
-                    populations = []
-                elif line.startswith("segsites"):
-                    segsites.append(float(line.lstrip("segsites: ")))
-
-            fst.append(getFst(H, segsites, args.nchrom, npop))
-            pi.append(getPi(populations))
-
-        meanVar = "%f , %f, %f\n" % (
-                weightedMean(fst, segsites),
-                weightedVar(fst, segsites),
-                weightedMean(pi))
-        out.write(meanVar)
-        print("\r%f percent complete" % (100))
+        out.write("mean.fst, var.fst, pi, tau, rho\n")
+        out.writelines(", ".join(str(i) for i in j) + "\n" for j in summaries)
 
 
 if __name__ == "__main__":
+    ind = re.compile('[01]+$')
     main()
 
 
