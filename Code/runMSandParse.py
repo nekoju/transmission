@@ -20,7 +20,6 @@ def getH(population):
 
 
 def weightedMean(values, weights = None):
-    values = [float(x) for x in values]
     if weights:
         return sum([values[i] * weights[i] 
             for i in xrange(len(values))]) / sum(weights)
@@ -75,19 +74,22 @@ def getOutput(cmd):
 
 def getPi(populations):
     A = tuple([tuple(x) for x in it.chain(*populations)])
+    aHash = tuple([hash(x) for x in A])
     segsites = range(len(A[0]))
     terms = []
     for i in range(len(A)):
-        p_i = float(sum(1 for x in A if x == A[i])) / float(len(A))
+        p_i = float(len([1.0 for x in aHash if x == aHash[i]])) / float(len(A))
         for j in range(i + 1, len(populations)):
-            p_j = float(sum(1 for x in A if x == A[j])) / float(len(A))
+            p_j = float(len([1.0 for x in aHash if x == aHash[j]])) \
+                    / float(len(A))
             ids = tuple(it.chain(*[zip(segsites, A[x]) for x in (i, j)]))
             pi_ij = float(len(set(ids)) - len(segsites)) / float(len(segsites))
-            terms.append(2 * p_i * p_j * pi_ij)
-    return sum(terms)
+            terms.append(p_i * p_j * pi_ij)
+    return 2 * sum(terms)
             
             
 def main():
+    msTotal = 0.0
     parser = argparse.ArgumentParser()
     parser.add_argument("params", 
             help = "The path of a .csv file containing float values of tau and rho,\
@@ -166,7 +168,7 @@ def main():
 
             for line in msOut:
                 if ind.match(line):
-                    population.append([int(x) for x in line.strip()])
+                    population.append([float(x) for x in line.strip()])
                     i += 1
                     if i == args.nchrom:
                         i = 0
@@ -183,16 +185,17 @@ def main():
                     H = []
                     populations = []
                 elif line.startswith("segsites"):
-                    segsites.append(int(line.lstrip("segsites: ")))
+                    segsites.append(float(line.lstrip("segsites: ")))
 
-        fst.append(getFst(H, segsites, args.nchrom, npop))
+            fst.append(getFst(H, segsites, args.nchrom, npop))
+            pi.append(getPi(populations))
+
         meanVar = "%f , %f, %f\n" % (
                 weightedMean(fst, segsites),
                 weightedVar(fst, segsites),
                 weightedMean(pi))
         out.write(meanVar)
         print("\r%f percent complete" % (100))
-        print("\n", end = "")
 
 
 if __name__ == "__main__":
