@@ -191,6 +191,7 @@ fstBarStd <- fstBar / (1 - hsBar)
 
     priorSims <- read.csv("~/Data/MixedTransmission/msOut.fst" , header = TRUE) 
     priorParams <- read.csv("~/Data/MixedTransmission/msHyperParams.sh" , header = TRUE)
+    priors <- data.frame(cbind(priorSims , priorParams))
     simData <- cbind(priorParams , priorSims)
     simData <- mutate(
         simData ,

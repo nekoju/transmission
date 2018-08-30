@@ -4,7 +4,6 @@
 # usage retrieved from help flag
 
 from __future__ import print_function
-import sys
 import re
 import shlex
 import argparse
@@ -12,7 +11,6 @@ import itertools as it
 from subprocess import Popen, PIPE
 from multiprocessing import Pool
 from functools import partial
-import pdb
 
 
 def getH(population):
