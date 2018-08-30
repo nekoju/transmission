@@ -8,17 +8,11 @@ import sys
 import re
 import shlex
 import argparse
-from subprocess import Popen, PIPE
-import pdb
 import itertools as it
+from subprocess import Popen, PIPE
 from multiprocessing import Pool
-
-
-class Copier(object):
-    def __init__(self, arguments):
-        self.args = arguments
-    def __call__(self, pars):
-        getSummary(pars, self.args)
+from functools import partial
+import pdb
 
 
 def getH(population):
@@ -134,13 +128,17 @@ def getSummary(row, args):
             segsites.append(float(line.lstrip("segsites: ")))
     fst.append(getFst(H, segsites, args.nchrom, npop))
     pi.append(getPi(populations))
-    meanVar = "%f , %f, %f\n" % (
+    meanVar = [
             weightedMean(fst, segsites),
             weightedVar(fst, segsites),
             weightedMean(pi),
             tau,
-            rho)
+            rho]
     return meanVar
+
+
+def summaryPool(args):
+    return partial(getSummary, args = args)
            
             
 def main():
@@ -172,7 +170,7 @@ def main():
     parser.add_argument("-c",
             "--ncore", 
             nargs = "?",
-            default = "1",
+            default = 1,
             type = int,
             help = "Number of processing cores")
     parser.add_argument("outfile",
@@ -191,8 +189,7 @@ def main():
     popSizes = ["%d" % args.nchrom for x in range(args.npop)]
 
     pool = Pool(args.ncore)
-    pdb.set_trace()
-    summaries = pool.map(Copier(args), params)
+    summaries = pool.map(summaryPool(args), params)
 
     with open(args.outfile, "w") as out:
         out.write("mean.fst, var.fst, pi, tau, rho\n")
