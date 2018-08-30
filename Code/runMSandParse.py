@@ -29,12 +29,16 @@ def weightedMean(values, weights = None):
         return sum(values) / len(values)
 
 
-def weightedVar(values, weights):
+def weightedVar(values, weights = None):
     V1 = float(sum(weights))
     xBar = weightedMean(values, weights)
     try:
-        return sum([weights[i] * (values[i] - xBar) ** 2 
-            for i in xrange(len(values))]) / (V1 - 1)
+        if weights:
+            return sum(weights[i] * (values[i] - xBar) ** 2 
+                    for i in xrange(len(values))) / (V1 - 1.0)
+        else:
+            return sum((values[i] - xBar) ** 2 
+                for i in xrange(len(values))) / (float(len(values)) - 1.0)
     except:
         return 0
 
@@ -185,8 +189,6 @@ def main():
                     filter(None, line.strip().split(","))])
             except:
                 pass
-
-    popSizes = ["%d" % args.nchrom for x in range(args.npop)]
 
     pool = Pool(args.ncore)
     summaries = pool.map(summaryPool(args), params)
