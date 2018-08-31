@@ -42,6 +42,7 @@ def weightedVar(values, weights = None):
 
 
 def map_level(f, item, level):
+    # maps a function at a specified level of an n-dimensional list
     if level == 0:
         return f(item)
     else:
@@ -49,6 +50,7 @@ def map_level(f, item, level):
 
 
 def getFst(H, segsites, nchrom, npop):
+    # returns mean Gst over all loci using the "ratio of averages" method
     HBySite = [zip(*x) for x in zip(*H)]
     HBarPerSite = map_level(weightedMean, HBySite, 2)
     pBar = HBarPerSite[0]
@@ -59,15 +61,8 @@ def getFst(H, segsites, nchrom, npop):
     return 1 - HsBar / HtBar
 
 
-def getLines(infile):
-    total = 0
-    for line in infile:
-        if line.startswith("ms"):
-            total += 1
-    return total
-
-
 def getOutput(cmd):
+    # runs ms using cmd and returns output
     args = shlex.split(cmd)
     proc = Popen(args, stdout = PIPE, stderr = PIPE)
     out, err = proc.communicate()
@@ -92,6 +87,10 @@ def getPi(populations):
 
 
 def getSummary(row, args):
+    # computes summary statistics: fst mean and variance as well as mean pi
+    # within each run of ms, that is, for each parameter combination
+    # fst mean is calculated as the average of ratios for consistency
+    # with variance
     H = []
     pi = []
     fst = []
@@ -99,6 +98,8 @@ def getSummary(row, args):
     population = []
     npop = 0
     tau, rho = row
+    # const is a factor by which to multiply host theta and M to achieve 
+    # symbiont effective population size
     const = rho / (tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho)
     reps = {"total": args.nchrom * args.npop, "nsamp": args.nsamp,
          "theta": args.theta * const, "npop": args.npop, 
@@ -106,12 +107,15 @@ def getSummary(row, args):
     cmd = " ".join(("ms %(total)d %(nsamp)d -t %(theta)f -I %(npop)d" % reps, 
      " ".join(str(args.nchrom) for x in range(args.npop)),
      "%(mig)f" % reps))
+    # get ms stdout
     msOut = getOutput(cmd)[1].split("\n")
 
     for line in msOut:
+        # add sequence lines to population
         if ind.match(line):
             population.append([float(x) for x in line.strip()])
             i += 1
+            # calculate H and add to metapopulation
             if i == args.nchrom:
                 i = 0
                 npop +=1
@@ -183,6 +187,7 @@ def main():
     with open(args.params) as pars:
         for line in pars:
             try:
+                # added filter line to remove newlines
                 params.append([float(x) for x in 
                     filter(None, line.strip().split(","))])
             except:
