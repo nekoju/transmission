@@ -43,3 +43,8 @@ msCall <- function (tau , rho , thetaH , M , npop , nchrom , samp) {
         )
 }
 
+unlogit <- function (logitp , bounds = c(0 , 1)) {
+    a <- bounds[1]
+    b <- bounds[2]
+    (b - a) / (exp(-logitp) + 1) + a
+}
