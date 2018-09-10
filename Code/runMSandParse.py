@@ -8,7 +8,6 @@ import re
 import shlex
 import argparse
 import itertools as it
-import pdb
 from subprocess import Popen, PIPE
 from multiprocessing import Pool
 from functools import partial
@@ -217,7 +216,6 @@ def main():
             except:
                 pass
 
-    getSummary(params[0], args)
     pool = Pool(args.ncore)
     summaries = pool.map(summaryPool(args), params)
 
