@@ -121,7 +121,6 @@ def getSummary(row, args):
     populations = []
     npop = 0
     tau, rho = row
-    print(tau, rho)
     # const is a factor by which to multiply host theta and M to achieve 
     # symbiont effective population size
     const = rho / (tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho)
@@ -219,7 +218,6 @@ def main():
             except:
                 pass
 
-    getSummary(params[0], args)
     pool = Pool(args.ncore)
     summaries = pool.map(summaryPool(args), params)
 
