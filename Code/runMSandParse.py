@@ -127,9 +127,9 @@ def getSummary(row, args):
     reps = {"total": args.nchrom * args.npop, "nsamp": args.nsamp,
          "theta": args.theta * const, "npop": args.npop, 
          "mig": args.mig * const, "nchrom": args.nchrom}
-    cmd = " ".join(("ms %(total)d %(nsamp)d -t %(theta)f -I %(npop)d --seeds 1 2 3" % reps, 
-     " ".join(str(args.nchrom) for x in range(args.npop)),
-     "%(mig)f" % reps))
+    cmd = " ".join(("ms %(total)d %(nsamp)d -t %(theta)f -I %(npop)d" % reps, 
+        " ".join(str(args.nchrom) for x in range(args.npop)),
+        "%(mig)f" % reps))
     # get ms stdout
     msOut = getOutput(cmd)[1].split("\n")
     
@@ -159,13 +159,12 @@ def getSummary(row, args):
     fst.append(getFst(H, segsites, args.nchrom, npop))
     pi.append(getPi(populations))
     meanVar = [
-            weightedMean(fst, segsites),
-            weightedVar(fst, segsites),
+            weightedMean(fst, segsites) if all(x != 0 for x in fst)else 0,
+            weightedVar(fst, segsites) if all(x != 0 for x in fst) else 0,
             weightedMean(pi),
             tau,
             rho]
     return meanVar
-
 
 
 def summaryPool(args):
@@ -218,6 +217,7 @@ def main():
             except:
                 pass
 
+    getSummary(params[0], args)
     pool = Pool(args.ncore)
     summaries = pool.map(summaryPool(args), params)
 
