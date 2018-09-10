@@ -48,3 +48,7 @@ unlogit <- function (logitp , bounds = c(0 , 1)) {
     b <- bounds[2]
     (b - a) / (exp(-logitp) + 1) + a
 }
+
+erfc <- function (x) {
+    2 * pnorm((x * sqrt(2)) , lower = FALSE)
+}
