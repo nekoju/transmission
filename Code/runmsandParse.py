@@ -8,6 +8,8 @@ import re
 import shlex
 import argparse
 import itertools as it
+import sys
+import pdb
 from subprocess import Popen, PIPE
 from multiprocessing import Pool
 from functools import partial
@@ -175,6 +177,10 @@ def main():
     parser.add_argument("params", 
             help = "The path of a .csv file containing float values of tau and rho,\
                     one line per MS iteration. Headers will be stripped")
+    parser.add_argument("outfile",
+            nargs = "?",
+            default = None, 
+            help = "Output file")
     parser.add_argument("-n",
             "--nchrom",
             type = int,
@@ -194,7 +200,8 @@ def main():
     parser.add_argument("-M",
             "--mig",
             type = float,
-            help = "Population migration parameter (2*Ne*m) for each simulation"
+            help = "Population migration parameter (2*Ne*m) \
+                for the host population"
             )
     parser.add_argument("-c",
             "--ncore", 
@@ -202,8 +209,6 @@ def main():
             default = 1,
             type = int,
             help = "Number of processing cores")
-    parser.add_argument("outfile",
-            help = "Output file")
     args = parser.parse_args()
 
     params = []
@@ -218,10 +223,12 @@ def main():
 
     pool = Pool(args.ncore)
     summaries = pool.map(summaryPool(args), params)
-
-    with open(args.outfile, "w") as out:
-        out.write("mean.fst, var.fst, pi, tau, rho\n")
-        out.writelines(", ".join(str(i) for i in j) + "\n" for j in summaries)
+    
+    out = open(args.outfile, "w") if args.outfile else sys.stdout
+    out.write("mean.fst, var.fst, pi, tau, rho\n")
+    out.writelines(", ".join(str(i) for i in j) + "\n" for j in summaries)
+    if out is not sys.stdout:
+        close(out)
 
 
 if __name__ == "__main__":
