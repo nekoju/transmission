@@ -24,8 +24,9 @@ def getH(population):
 
 def weightedMean(values, weights=None):
     if weights:
-        return sum([values[i] * weights[i]
-                    for i in range(len(values))]) / sum(weights)
+        return sum(
+            [values[i] * weights[i]
+                for i in range(len(values))]) / sum(weights)
     else:
         return sum(values) / len(values)
 
