@@ -14,11 +14,17 @@ from multiprocessing import Pool
 from functools import partial
 
 
-def getH(population):
+def getH(population, replace=False):
     # returns a 2 x nseg list of first, mutant allele frequencies,
     # second, heterozygosities
-    p = [weightedMean(x) for x in zip(*population)]
-    H = [2 * freq * (1 - freq) for freq in p]
+    if replace:
+        p = [weightedMean(x) for x in zip(*population)]
+        H = [2 * freq * (1 - freq) for freq in p]
+    else:
+        k = [sum(x) for x in zip(*population)]
+        n = len(population)
+        p = [x / n for x in k]
+        H = [2 * x / n * (n - x) / (n - 1) for x in k]
     return [p, H]
 
 
@@ -55,7 +61,7 @@ def map_level(f, item, level):
         return [map_level(f, x, level - 1) for x in item]
 
 
-def getFst(H, segsites, nchrom, npop):
+def getFst(H, segsites, nchrom, npop, replace=False):
     # returns mean Gst over all loci using the "ratio of averages" method
     # H is a npop x 2 x nseg list in the form
     # the first subindex is the site; the second is the population
@@ -73,9 +79,12 @@ def getFst(H, segsites, nchrom, npop):
     #  [hbar1, hbar2]
     if HBarPerSite:
         pBar = HBarPerSite[0]
-        Ht = [
-                (nchrom * npop) / (nchrom * npop - 1) * 2 * p * (1 - p)
-                for p in pBar]
+        n = nchrom * npop
+        if replace:
+            Ht = [nchrom / (nchrom - 1) * 2 * p * (1 - p) for p in pBar]
+        else:
+            k = [p * nchrom * npop for p in pBar]
+            Ht = [n / (n - 1) * 2 * x / n * (n - x) / (n - 1) for x in k]
         Hs = [nchrom / (nchrom - 1) * x for x in HBarPerSite[1]]
         HtBar = weightedMean(Ht)
         HsBar = weightedMean(Hs)
@@ -236,7 +245,7 @@ def main():
                             filter(None, line.strip().split(","))])
             except Exception:
                 pass
-
+    # [getSummary(row, args) for row in params]
     pool = Pool(args.ncore)
     summaries = pool.map(summaryPool(args), params)
 
