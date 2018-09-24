@@ -1,7 +1,6 @@
 from __future__ import print_function, division
 import numpy as np
 import msprime as ms
-import pdb
 
 
 class Sample():
@@ -39,7 +38,7 @@ class Sample():
         """
         if kwargs:
             for key, value in kwargs.items:
-                exec(key + "=val")
+                exec(key + "=value")
         # k=sum of number of mutants per site, klist=list of those sums
         klist = np.count_nonzero(self.gtmatrix, axis=0)
         if replace:
@@ -71,7 +70,9 @@ class Sample():
                     k_{ij} is the number of pairwise differences between the
                     ith and jth samples. This is the implementation used
                     originally in Tajima's D.
-                h: simply the sum of heterozygosities across all sites
+                h: Simply the sum of heterozygosities across all sites.
+                    Takes arguments to self.h() as optional arguments,
+                    namely 'bias' and 'replace'.
         """
 
         if method is "nei":
@@ -133,7 +134,9 @@ def main():
     test2 = np.array([[0, 0, 0], [1, 1, 1], [1, 1, 0], [1, 1, 0]])
     testSample = Sample(test2)
     # pi should be 1.125
-    print(testSample.pi("h", replace=True, bias=False))
+    print(testSample.pi())
+    print(testSample.pi("tajima"))
+    print(testSample.pi("h"))
 
 
 if __name__ == "__main__":
