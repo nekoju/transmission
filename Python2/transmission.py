@@ -29,7 +29,7 @@ class Sample():
         self.segsites = self.gtmatrix.shape[1]
         self.nchrom = self.gtmatrix.shape[0]
 
-    def h(self, replace=False, average=False, bias=True):
+    def h(self, replace=False, average=False, bias=True, **kwargs):
         """
         Calculate heterozygosity over sites in sample.
         Args:
@@ -37,6 +37,9 @@ class Sample():
             average (bool): whether to average H values for all sites
             bias (bool): whether to apply bias-correction to calculations
         """
+        if kwargs:
+            for key, value in kwargs.items:
+                exec(key + "=val")
         # k=sum of number of mutants per site, klist=list of those sums
         klist = np.count_nonzero(self.gtmatrix, axis=0)
         if replace:
@@ -54,7 +57,7 @@ class Sample():
         else:
             return hlist
 
-    def pi(self, method="nei"):
+    def pi(self, method="nei", *args, **kwargs):
         """
         Calculates different metrics of nucleotide diversity.
 
@@ -72,23 +75,29 @@ class Sample():
         """
 
         if method is "nei":
+            # Hash rows of genotype matrix to reduce time comparing.
             hashes = np.apply_along_axis(
                     lambda row: hash(tuple(row)), 1, self.gtmatrix
                     )
             seqs = dict.fromkeys(set(hashes))
+            # Loop over seqs keys to calculate sequence frequncies
+            # as well as create dict items for sequences themselves.
             for seqid in seqs:
                 seqs[seqid] = {}
                 seqid_array = np.full(self.nchrom, seqid)
-                try:
+                # Get frequencies.
+                if self.nchrom == 0:
+                    seqs[seqid]["p"] = 0.0
+                else:
                     seqs[seqid]["p"] = (np.count_nonzero(
                                         seqid_array == hashes) /
                                         self.nchrom)
-                except(Exception):
-                    seqs[seqid]["p"] = 0.0
+                # Associate sequences with hashes.
                 for i in np.arange(self.gtmatrix.shape[0]):
                     if seqid == hash(tuple(self.gtmatrix[i, ])):
                         seqs[seqid]["seq"] = np.array(self.gtmatrix[i, ])
                         break
+            # Calculate nucleotide diversity.
             nucdiv = 0
             for i in seqs:
                 for j in seqs:
@@ -100,19 +109,17 @@ class Sample():
                                    )
             return nucdiv
         elif method is "tajima":
-
-            def pairwise(seq, array):
-                return np.sum([np.count_nonzero(seq == array[i, ])
-                              for i
-                              in range(array.shape[0])]
-                              )
-
-            k = np.apply_along_axis(lambda row: pairwise(row, self.gtmatrix),
-                                    1,
-                                    self.gtmatrix)
-            return k / ((self.nchrom - 1) * self.nchrom / 2)
+            k = 0
+            # count number of pairwise differences for all unique comparisons.
+            for i in np.arange(self.gtmatrix.shape[0] - 1):
+                for j in np.arange(i, self.gtmatrix.shape[0]):
+                    k += np.count_nonzero(
+                        self.gtmatrix[i, ] != self.gtmatrix[j, ]
+                        )
+            # Formula: \sum{k_ij} / (nchrom choose 2)
+            return np.sum(k) / ((self.nchrom - 1) * self.nchrom / 2)
         elif method is "h":
-            np.sum(self.h())
+            return np.sum(self.h(**kwargs))
         else:
             print("Unsupported method")
 
@@ -125,8 +132,8 @@ def main():
     # print("pi =", matrix.pi())
     test2 = np.array([[0, 0, 0], [1, 1, 1], [1, 1, 0], [1, 1, 0]])
     testSample = Sample(test2)
-    # pi should be 0.5625
-    print(testSample.pi())
+    # pi should be 1.125
+    print(testSample.pi("h", replace=True, bias=False))
 
 
 if __name__ == "__main__":
