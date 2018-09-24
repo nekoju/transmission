@@ -1,8 +1,10 @@
 from __future__ import print_function, division
 import numpy as np
+import msprime as ms
+import pdb
 
 
-class Pop():
+class Sample():
     """
     Coalescent simulation output representing a population class and methods.
     Input argument should be a np.ndarray with 2 dimensions detailed
@@ -70,13 +72,22 @@ class Pop():
         """
 
         if method is "nei":
-            hashes = [hash(self.gtmatrix[i, ]) for i in range(self.nchrom)]
-            seqs = dict(set(hashes))
-            for seq in seqs.keys:
-                seqs[seq]["p"] = np.count_nonzero(seq == hashes) / self.nchrom
-                for i in range(self.gtmatrix.shape[0]):
-                    if seq == hash(self.gtmatrix[i, ]):
-                        seqs[seq]["seq"] = self.gtmatrix[i, ]
+            hashes = np.apply_along_axis(
+                    lambda row: hash(tuple(row)), 1, self.gtmatrix
+                    )
+            seqs = dict.fromkeys(set(hashes))
+            for seqid in seqs:
+                seqs[seqid] = {}
+                seqid_array = np.full(self.nchrom, seqid)
+                try:
+                    seqs[seqid]["p"] = (np.count_nonzero(
+                                        seqid_array == hashes) /
+                                        self.nchrom)
+                except(Exception):
+                    seqs[seqid]["p"] = 0.0
+                for i in np.arange(self.gtmatrix.shape[0]):
+                    if seqid == hash(tuple(self.gtmatrix[i, ])):
+                        seqs[seqid]["seq"] = np.array(self.gtmatrix[i, ])
                         break
             nucdiv = 0
             for i in seqs:
@@ -84,7 +95,8 @@ class Pop():
                     if i != j:
                         nucdiv += (seqs[i]['p'] * seqs[j]['p'] *
                                    np.count_nonzero(
-                                       seqs[i][seq] == seqs[j][seq])
+                                       seqs[i]["seq"] != seqs[j]["seq"]
+                                       )
                                    )
             return nucdiv
         elif method is "tajima":
@@ -103,3 +115,19 @@ class Pop():
             np.sum(self.h())
         else:
             print("Unsupported method")
+
+
+def main():
+    # test = ms.simulate(sample_size=10, mutation_rate=1)
+    # matrix = Sample(test.genotype_matrix())
+    # print(matrix.gtmatrix)
+    # print("h =", matrix.h(average=True))
+    # print("pi =", matrix.pi())
+    test2 = np.array([[0, 0, 0], [1, 1, 1], [1, 1, 0], [1, 1, 0]])
+    testSample = Sample(test2)
+    # pi should be 0.5625
+    print(testSample.pi())
+
+
+if __name__ == "__main__":
+    main()
