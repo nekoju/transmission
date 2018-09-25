@@ -28,15 +28,24 @@ class Sample():
 
         """
         if type(input).__name__ == "TreeSequence":
-            self.gtmatrix = input.genotype_matrix().T
             self.segsites = input.num_sites
             self.nchrom = input.num_samples
             self.type = "TreeSequence"
         else:
-            self.gtmatrix = input
-            self.segsites = self.gtmatrix.shape[1]
-            self.nchrom = self.gtmatrix.shape[0]
+            self.segsites = input.shape[1]
+            self.nchrom = input.shape[0]
             self.type = "np.ndarray"
+        self.input = input
+
+    def gtmatrix(self):
+        """
+        Sample.gtmatrix() returns a
+        self.nchrom X self.sites matrix of sample genotypes.
+        """
+        if self.type == "TreeSequence":
+            return self.input.genotype_matrix().T
+        else:
+            return self.input
 
     def h(self, replace=False, average=False, bias=True, **kwargs):
         """
