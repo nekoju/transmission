@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 import numpy as np
 import msprime as ms
+import pdb
 
 
 class Sample():
@@ -28,15 +29,24 @@ class Sample():
 
         """
         if type(input).__name__ == "TreeSequence":
-            self.gtmatrix = input.genotype_matrix().T
             self.segsites = input.num_sites
             self.nchrom = input.num_samples
             self.type = "TreeSequence"
         else:
-            self.gtmatrix = input
-            self.segsites = self.gtmatrix.shape[1]
-            self.nchrom = self.gtmatrix.shape[0]
+            self.segsites = input.shape[1]
+            self.nchrom = input.shape[0]
             self.type = "np.ndarray"
+        self.input = input
+
+    def gtmatrix(self):
+        """
+        Sample.gtmatrix() returns a
+        self.nchrom X self.sites matrix of sample genotypes.
+        """
+        if self.type == "TreeSequence":
+            return self.input.genotype_matrix().T
+        else:
+            return self.input
 
     def h(self, replace=False, average=False, bias=True, **kwargs):
         """
@@ -52,7 +62,7 @@ class Sample():
                     [np.count_nonzero(x.genotypes) for x in input.variants()]
                     )
         else:
-            klist = np.count_nonzero(self.gtmatrix, axis=0)
+            klist = np.count_nonzero(self.gtmatrix(), axis=0)
         if replace:
             plist = klist / self.nchrom
             hlist = 2 * plist * (1 - plist)
@@ -90,7 +100,7 @@ class Sample():
         if method is "nei":
             # Hash rows of genotype matrix to reduce time comparing.
             hashes = np.apply_along_axis(
-                    lambda row: hash(tuple(row)), 1, self.gtmatrix
+                    lambda row: hash(tuple(row)), 1, self.gtmatrix()
                     )
             seqs = dict.fromkeys(set(hashes))
             # Loop over seqs keys to calculate sequence frequncies
@@ -106,9 +116,9 @@ class Sample():
                                         seqid_array == hashes) /
                                         self.nchrom)
                 # Associate sequences with hashes.
-                for i in np.arange(self.gtmatrix.shape[0]):
-                    if seqid == hash(tuple(self.gtmatrix[i, ])):
-                        seqs[seqid]["seq"] = np.array(self.gtmatrix[i, ])
+                for i in np.arange(self.nchrom):
+                    if seqid == hash(tuple(self.gtmatrix()[i, ])):
+                        seqs[seqid]["seq"] = np.array(self.gtmatrix()[i, ])
                         break
             # Calculate nucleotide diversity.
             nucdiv = 0
@@ -124,13 +134,14 @@ class Sample():
         elif method is "tajima":
             k = 0
             # count number of pairwise differences for all unique comparisons.
-            for i in np.arange(self.gtmatrix.shape[0] - 1):
-                for j in np.arange(i, self.gtmatrix.shape[0]):
+            gtmatrix = self.gtmatrix()
+            for i in np.arange(self.nchrom - 1):
+                for j in np.arange(i, self.nchrom):
                     k += np.count_nonzero(
-                        self.gtmatrix[i, ] != self.gtmatrix[j, ]
+                        gtmatrix[i, ] != gtmatrix[j, ]
                         )
             # Formula: \sum{k_ij} / (nchrom choose 2)
-            return np.sum(k) / ((self.nchrom - 1) * self.nchrom / 2)
+            return k / ((self.nchrom - 1) * self.nchrom / 2)
         elif method is "h":
             return np.sum(self.h(**kwargs))
         else:
@@ -151,7 +162,7 @@ def main():
     print(testsample.pi("h"))
     test3 = ms.simulate(sample_size=10, mutation_rate=1 / 4)
     testsample3 = Sample(test3)
-    print(testsample3.gtmatrix)
+    print(testsample3.gtmatrix())
     print(testsample.pi())
 
 
