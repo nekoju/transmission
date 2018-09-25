@@ -31,10 +31,12 @@ class Sample():
             self.gtmatrix = input.genotype_matrix().T
             self.segsites = input.num_sites
             self.nchrom = input.num_samples
+            self.type = "TreeSequence"
         else:
             self.gtmatrix = input
             self.segsites = self.gtmatrix.shape[1]
             self.nchrom = self.gtmatrix.shape[0]
+            self.type = "np.ndarray"
 
     def h(self, replace=False, average=False, bias=True, **kwargs):
         """
@@ -44,11 +46,13 @@ class Sample():
             average (bool): whether to average H values for all sites
             bias (bool): whether to apply bias-correction to calculations
         """
-        if kwargs:
-            for key, value in kwargs.items:
-                exec(key + "=value")
         # k=sum of number of mutants per site, klist=list of those sums
-        klist = np.count_nonzero(self.gtmatrix, axis=0)
+        if type == "TreeSequence":
+            klist = np.array(
+                    [np.count_nonzero(x.genotypes) for x in input.variants()]
+                    )
+        else:
+            klist = np.count_nonzero(self.gtmatrix, axis=0)
         if replace:
             plist = klist / self.nchrom
             hlist = 2 * plist * (1 - plist)
