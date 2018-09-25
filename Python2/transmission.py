@@ -15,18 +15,26 @@ class Sample():
         gtmatrix: the original matrix supplied, consisting of [0, 1]
     """
 
-    def __init__(self, matrix):
+    def __init__(self, input):
         """
         Args:
-            matrix (np.ndarray): a 2 x 2 np.ndarray with individual chromosomes
+            input (np.ndarray OR msprime.TreeSequence): A 2 x 2 np.ndarray
+                with individual chromosomes
                 represented by rows and snp positions represented by columns.
+                Alternatively, an object of class "TreeSequence" can be
+                provided and the relevant attributes will be inferred.
                 Note that this it the transpose of
                 msprime.TreeSequence.genotype_matrix()
 
         """
-        self.gtmatrix = matrix
-        self.segsites = self.gtmatrix.shape[1]
-        self.nchrom = self.gtmatrix.shape[0]
+        if type(input).__name__ == "TreeSequence":
+            self.gtmatrix = input.genotype_matrix().T
+            self.segsites = input.num_sites
+            self.nchrom = input.num_samples
+        else:
+            self.gtmatrix = input
+            self.segsites = self.gtmatrix.shape[1]
+            self.nchrom = self.gtmatrix.shape[0]
 
     def h(self, replace=False, average=False, bias=True, **kwargs):
         """
@@ -132,11 +140,15 @@ def main():
     # print("h =", matrix.h(average=True))
     # print("pi =", matrix.pi())
     test2 = np.array([[0, 0, 0], [1, 1, 1], [1, 1, 0], [1, 1, 0]])
-    testSample = Sample(test2)
+    testsample = Sample(test2)
     # pi should be 1.125
-    print(testSample.pi())
-    print(testSample.pi("tajima"))
-    print(testSample.pi("h"))
+    print(testsample.pi())
+    print(testsample.pi("tajima"))
+    print(testsample.pi("h"))
+    test3 = ms.simulate(sample_size=10, mutation_rate=1 / 4)
+    testsample3 = Sample(test3)
+    print(testsample3.gtmatrix)
+    print(testsample.pi())
 
 
 if __name__ == "__main__":
