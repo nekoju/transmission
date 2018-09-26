@@ -8,12 +8,14 @@ class Sample():
     """
     Coalescent simulation output representing a population class and methods.
     Input argument should be a np.ndarray with 2 dimensions detailed
-    in __init__.
+    in __init__ or an msprime.TreeSequence object.
 
     Attributes:
         segsites: the number of segregating sites in the sample
-        self.nchrom: the number of chromosomes sampled
+        nchrom: the number of chromosomes sampled
         gtmatrix: the original matrix supplied, consisting of [0, 1]
+        type: the input type, either "TreeSequence" or "ndarray"
+        popdata: the original object passed to instantiate the class
     """
 
     def __init__(self, popdata):
@@ -35,8 +37,16 @@ class Sample():
         else:
             self.segsites = popdata.shape[1]
             self.nchrom = popdata.shape[0]
-            self.type = "np.ndarray"
+            self.type = "ndarray"
         self.popdata = popdata
+
+    def __str__(self):
+        print(
+            "a {nchrom} chromosome sample with "
+            "{segsites} segregating sites".format(
+                nchrom=self.nchrom, segsites=self.segsites
+                )
+            )
 
     def gtmatrix(self):
         """
@@ -155,7 +165,7 @@ class Sample():
         elif method is "h":
             return np.sum(self.h(**kwargs))
         else:
-            print("Unsupported method")
+            print("Unsupported method, {}".format(method))
 
     def polymorphic(self, threshold=0, output=("num", "which")):
         """
@@ -193,6 +203,14 @@ class Sample():
                 "Invalid output, {output} specified."
                 "Specify 'num' or 'which'.".format(output=output)
                 )
+
+
+class MetaSample(Sample):
+    """
+    Coalescent output representing a metapopulation sample class and methods.
+    Input argument should be a np.ndarray with three dimensions detailed
+    in __init__ or an msprime.TreeSequence object.
+    """
 
 
 def main():
