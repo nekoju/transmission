@@ -16,10 +16,10 @@ class Sample():
         gtmatrix: the original matrix supplied, consisting of [0, 1]
     """
 
-    def __init__(self, input):
+    def __init__(self, popdata):
         """
         Args:
-            input (np.ndarray OR msprime.TreeSequence): A 2 x 2 np.ndarray
+            popdata (np.ndarray OR msprime.TreeSequence): A 2 x 2 np.ndarray
                 with individual chromosomes
                 represented by rows and snp positions represented by columns.
                 Alternatively, an object of class "TreeSequence" can be
@@ -28,15 +28,15 @@ class Sample():
                 msprime.TreeSequence.genotype_matrix()
 
         """
-        if type(input).__name__ == "TreeSequence":
-            self.segsites = input.num_sites
-            self.nchrom = input.num_samples
+        if type(popdata).__name__ == "TreeSequence":
+            self.segsites = popdata.num_sites
+            self.nchrom = popdata.num_samples
             self.type = "TreeSequence"
         else:
-            self.segsites = input.shape[1]
-            self.nchrom = input.shape[0]
+            self.segsites = popdata.shape[1]
+            self.nchrom = popdata.shape[0]
             self.type = "np.ndarray"
-        self.input = input
+        self.popdata = popdata
 
     def gtmatrix(self):
         """
@@ -44,9 +44,9 @@ class Sample():
         self.nchrom X self.sites matrix of sample genotypes.
         """
         if self.type == "TreeSequence":
-            return self.input.genotype_matrix().T
+            return self.popdata.genotype_matrix().T
         else:
-            return self.input
+            return self.popdata
 
     def h(self, replace=False, average=False, bias=True, **kwargs):
         """
@@ -57,12 +57,7 @@ class Sample():
             bias (bool): whether to apply bias-correction to calculations
         """
         # k=sum of number of mutants per site, klist=list of those sums
-        if type == "TreeSequence":
-            klist = np.array(
-                    [np.count_nonzero(x.genotypes) for x in input.variants()]
-                    )
-        else:
-            klist = np.count_nonzero(self.gtmatrix(), axis=0)
+        klist = self.num_mutants()
         if replace:
             plist = klist / self.nchrom
             hlist = 2 * plist * (1 - plist)
@@ -77,6 +72,21 @@ class Sample():
             return np.mean(hlist)
         else:
             return hlist
+
+    def num_mutants(self):
+        """
+        Returns the number of mutant alleles observed at each site.
+        Used by other methods.
+        """
+
+        if self.type == "TreeSequence":
+            num_mutants = np.array(
+                [np.count_nonzero(x.genotypes)
+                 for x in self.popdata.variants()]
+                )
+        else:
+            num_mutants = np.count_nonzero(self.gtmatrix, axis=0)
+        return num_mutants
 
     def pi(self, method="nei", *args, **kwargs):
         """
@@ -147,9 +157,46 @@ class Sample():
         else:
             print("Unsupported method")
 
+    def polymorphic(self, threshold=0, output=("num", "which")):
+        """
+        Returns polymorphism attributes as dict or value.
+        Attributes are number of polymorphic sites and index positions of
+        polymorphic sites.
+
+        Args:
+            threshold (int): Number of derived alleles
+                above which polymorphism is counted, e.g.,
+                threshold=1 excludes singletons.
+            output (tuple or str): Whether to output number of
+                polymorphic sites or index positions of polymorphic sites,
+                or both. Possible values are "num" returning number of sites,
+                "which" returning indices,
+                or a tuple of both (default) returning a dict of both.
+        """
+        num_mutants = self.num_mutants()
+        polymorphic = np.array(
+                [np.full(self.segsites, threshold) < num_mutants,
+                 num_mutants < np.full(self.segsites, self.nchrom - threshold)]
+            ).all(axis=0)
+        if "which" in output:
+            which = np.nonzero(polymorphic)
+        if "num" in output:
+            num = np.count_nonzero(polymorphic)
+        if type(output) == tuple:
+            return {"which": which, "num": num}
+        elif output == "num":
+            return num
+        elif output == "which":
+            return which
+        else:
+            print(
+                "Invalid output, {output} specified."
+                "Specify 'num' or 'which'.".format(output=output)
+                )
+
 
 def main():
-    # test = ms.simulate(sample_size=10, mutation_rate=1)
+                # test = ms.simulate(sample_size=10, mutation_rate=1)
     # matrix = Sample(test.genotype_matrix())
     # print(matrix.gtmatrix)
     # print("h =", matrix.h(average=True))
@@ -160,10 +207,13 @@ def main():
     print(testsample.pi())
     print(testsample.pi("tajima"))
     print(testsample.pi("h"))
-    test3 = ms.simulate(sample_size=10, mutation_rate=1 / 4)
+    test3 = ms.simulate(sample_size=10, mutation_rate=1)
     testsample3 = Sample(test3)
     print(testsample3.gtmatrix())
     print(testsample.pi())
+
+    print(testsample3.polymorphic(output="num"))
+    print(testsample3.polymorphic(output="which"))
 
 
 if __name__ == "__main__":
