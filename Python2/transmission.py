@@ -207,10 +207,15 @@ class Sample():
 
 class MetaSample(Sample):
     """
-    Coalescent output representing a metapopulation sample class and methods.
-    Input argument should be a np.ndarray with three dimensions detailed
-    in __init__ or an msprime.TreeSequence object.
+    Class representing a metapopulation sample and associated methods.
+    Input argument should be a npop X nchrom X segsites np.ndarray detailed
+    in the docstring for __init__, a nchrom X segsites np.ndarray with an
+    array listing to which population each chromosome belongs,
+    or an msprime.TreeSequence object.
     """
+
+    def __init__(self, popdata, ):
+        super(MetaSample, self).__init__(self, popdata)
 
 
 def main():
