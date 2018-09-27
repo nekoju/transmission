@@ -213,23 +213,30 @@ class MetaSample(Sample):
     or an msprime.TreeSequence object.
     """
 
-    def __init__(self, popdata, populations=None, force_meta=False):
+    def __init__(self, popdata, populations, force_meta=False):
         super(MetaSample, self).__init__(self, popdata)
-        if ((self.type == "TreeSequence"
-             and popdata.num_populations == 1
-             and not force_meta)
-            or (self.type == "np.ndarray" and len(populations == 1))):
-            print(
+        if (len(set(populations)) == 1
+            or (self.type == "TreeSequence"
+                and popdata.num_populations == 1
+                and not force_meta)):
+            raise Exception(
                 "Only 1 population provided. Returning 'Sample'."
                 "Use force_meta for MetaSample."
                 )
+            return None
             return Sample(popdata)
         elif self.type == "np.ndarray" and not populations:
-            print("Provide population designations.")
+            raise Exception("Provide population designations.")
+            return None
         else:
             self.npop = (popdata.num_populations
                          if self.type == "TreeSequence"
                          else len(populations))
+        if self.type == "np.ndarray":
+            self.pop_sample_sizes = np.array(
+                    [np.count_nonzero(np.full(x, self.nchrom) == populations)
+                     for x in set(populations)]
+                    )
 
 
 def main():
