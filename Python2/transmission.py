@@ -2,6 +2,7 @@ from __future__ import print_function, division
 import numpy as np
 import msprime as ms
 import pdb
+import sys
 
 
 class Sample():
@@ -219,17 +220,23 @@ class MetaSample(Sample):
              and popdata.num_populations == 1
              and not force_meta)
             or (self.type == "np.ndarray" and len(populations == 1))):
-            print(
+            eprint(
                 "Only 1 population provided. Returning 'Sample'."
                 "Use force_meta for MetaSample."
                 )
+            return None
             return Sample(popdata)
         elif self.type == "np.ndarray" and not populations:
-            print("Provide population designations.")
+            eprint("Provide population designations.")
+            return None
         else:
             self.npop = (popdata.num_populations
                          if self.type == "TreeSequence"
                          else len(populations))
+
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 
 def main():
