@@ -208,14 +208,28 @@ class Sample():
 class MetaSample(Sample):
     """
     Class representing a metapopulation sample and associated methods.
-    Input argument should be a npop X nchrom X segsites np.ndarray detailed
-    in the docstring for __init__, a nchrom X segsites np.ndarray with an
+    Input argument should be a nchrom X segsites np.ndarray with an
     array listing to which population each chromosome belongs,
     or an msprime.TreeSequence object.
     """
 
-    def __init__(self, popdata, ):
+    def __init__(self, popdata, populations=None, force_meta=False):
         super(MetaSample, self).__init__(self, popdata)
+        if ((self.type == "TreeSequence"
+             and popdata.num_populations == 1
+             and not force_meta)
+            or (self.type == "np.ndarray" and len(populations == 1))):
+            print(
+                "Only 1 population provided. Returning 'Sample'."
+                "Use force_meta for MetaSample."
+                )
+            return Sample(popdata)
+        elif self.type == "np.ndarray" and not populations:
+            print("Provide population designations.")
+        else:
+            self.npop = (popdata.num_populations
+                         if self.type == "TreeSequence"
+                         else len(populations))
 
 
 def main():
