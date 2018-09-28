@@ -4,7 +4,7 @@ import msprime as ms
 import pdb
 
 
-class Sample():
+class Sample(object):
     """
     Coalescent simulation output representing a population class and methods.
     Input argument should be a np.ndarray with 2 dimensions detailed
@@ -66,36 +66,58 @@ class Sample():
             average (bool): whether to average H values for all sites
             bias (bool): whether to apply bias-correction to calculations
         """
+        # populations for portability to MetaSample
+        if "populations" not in vars():
+            populations = np.zeros(self.nchrom, dtype=int)
+            pop_sample_sizes = self.nchrom
+        else:
+            pop_sample_sizes = np.array(self.pop_sample_sizes).T
+        popset = set(populations)
+        # Each row in harray is a population; each column a snp.
+        harray = (np.zeros(len(popset), dtype=int)
+                  if average
+                  else np.zeros((len(popset), self.segsites), dtype=int))
         # k=sum of number of mutants per site, klist=list of those sums
-        klist = self.num_mutants()
+        num_mutants = self.num_mutants(populations)
         if replace:
-            plist = klist / self.nchrom
-            hlist = 2 * plist * (1 - plist)
+            parray = num_mutants / pop_sample_sizes
+            harray = 2 * parray * (1 - parray)
         # heterozygosity should probably be calculated without replacement,
         # especially with small samples
         else:
-            hlist = (2 * klist / self.nchrom *
-                     (self.nchrom - klist) / (self.nchrom - 1))
+            harray = (2 * num_mutants / pop_sample_sizes *
+                      (pop_sample_sizes - num_mutants) /
+                      (pop_sample_sizes - 1))
         if bias:
-            hlist = self.nchrom / (self.nchrom - 1) * hlist
+            harray = pop_sample_sizes / (pop_sample_sizes - 1) * harray
         if average:
-            return np.mean(hlist)
+            return np.mean(harray, axis=1)
         else:
-            return hlist
+            return harray
 
-    def num_mutants(self):
+    def num_mutants(self, populations):
         """
         Returns the number of mutant alleles observed at each site.
         Used by other methods.
-        """
 
+        Args:
+            populations (list, tuple, or np.ndarray): Ints corresponding to
+            which population each chromosome belongs.
+        """
+        popset = set(populations)
+        num_mutants = np.zeros((len(popset), self.segsites), dtype=int)
         if self.type == "TreeSequence":
-            num_mutants = np.array(
-                [np.count_nonzero(x.genotypes)
-                 for x in self.popdata.variants()]
-                )
+            for site in self.popdata.variants():
+                for pop in popset:
+                    num_mutants[pop, site] = (np.count_nonzero(
+                        site.genotypes[np.nonzero(populations == pop)]
+                        )
+                    )
         else:
-            num_mutants = np.count_nonzero(self.gtmatrix, axis=0)
+            for pop in popset:
+                num_mutants[pop] = np.count_nonzero(
+                    self.gtmatrix[np.nonzero(populations == pop)], axis=0
+                    )
         return num_mutants
 
     def pi(self, method="nei", *args, **kwargs):
@@ -214,29 +236,24 @@ class MetaSample(Sample):
     """
 
     def __init__(self, popdata, populations, force_meta=False):
-        super(MetaSample, self).__init__(self, popdata)
+        super(MetaSample, self).__init__(popdata)
         if (len(set(populations)) == 1
             or (self.type == "TreeSequence"
                 and popdata.num_populations == 1
                 and not force_meta)):
             raise Exception(
-                "Only 1 population provided. Returning 'Sample'."
-                "Use force_meta for MetaSample."
+                "Only 1 population provided. "
+                "Use force_meta for MetaSample or use Sample."
                 )
-            return None
-            return Sample(popdata)
-        elif self.type == "np.ndarray" and not populations:
-            raise Exception("Provide population designations.")
-            return None
         else:
             self.npop = (popdata.num_populations
                          if self.type == "TreeSequence"
-                         else len(populations))
-        if self.type == "np.ndarray":
-            self.pop_sample_sizes = np.array(
-                    [np.count_nonzero(np.full(x, self.nchrom) == populations)
-                     for x in set(populations)]
-                    )
+                         else len((populations)))
+        self.pop_sample_sizes = np.array(
+            [np.count_nonzero(np.full(self.nchrom, x) == populations)
+             for x in set(populations)]
+            )
+        self.populations = populations
 
 
 def main():
