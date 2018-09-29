@@ -2,6 +2,7 @@ from __future__ import print_function, division
 import numpy as np
 import msprime as ms
 import pdb
+import sys
 
 
 class Sample(object):
@@ -254,6 +255,10 @@ class MetaSample(Sample):
              for x in set(populations)]
             )
         self.populations = populations
+
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 
 def main():
