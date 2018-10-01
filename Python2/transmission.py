@@ -2,7 +2,6 @@ from __future__ import print_function, division
 import numpy as np
 import msprime as ms
 import pdb
-import sys
 
 
 class Sample(object):
@@ -40,6 +39,8 @@ class Sample(object):
             self.nchrom = popdata.shape[0]
             self.type = "ndarray"
         self.popdata = popdata
+        self.populations = np.zeros(self.nchrom)
+        self.pop_sample_sizes = self.nchrom
 
     def __str__(self):
         print(
@@ -68,29 +69,36 @@ class Sample(object):
             bias (bool): whether to apply bias-correction to calculations
         """
         # populations for portability to MetaSample
-        if "populations" not in vars():
-            populations = np.zeros(self.nchrom, dtype=int)
-            pop_sample_sizes = self.nchrom
-        else:
-            pop_sample_sizes = np.array(self.pop_sample_sizes).T
-        popset = set(populations)
+        popset = set(self.populations)
         # Each row in harray is a population; each column a snp.
         harray = (np.zeros(len(popset), dtype=int)
                   if average
                   else np.zeros((len(popset), self.segsites), dtype=int))
         # k=sum of number of mutants per site, klist=list of those sums
-        num_mutants = self.num_mutants(populations)
+        num_mutants = self.num_mutants(self.populations)
         if replace:
-            parray = num_mutants / pop_sample_sizes
+            parray = (num_mutants.T / self.pop_sample_sizes).T
             harray = 2 * parray * (1 - parray)
         # heterozygosity should probably be calculated without replacement,
         # especially with small samples
         else:
-            harray = (2 * num_mutants / pop_sample_sizes *
-                      (pop_sample_sizes - num_mutants) /
-                      (pop_sample_sizes - 1))
+            harray = (
+                2 * np.true_divide(
+                    num_mutants.T, self.pop_sample_sizes
+                    ).T *
+                np.true_divide(
+                    (self.pop_sample_sizes - num_mutants.T),
+                    (self.pop_sample_sizes - 1)
+                    ).T
+                )
         if bias:
-            harray = pop_sample_sizes / (pop_sample_sizes - 1) * harray
+            harray = (
+                np.true_divide(
+                    self.pop_sample_sizes,
+                    ((self.pop_sample_sizes - 1))
+                )
+                * harray.T
+            ).T
         if average:
             return np.mean(harray, axis=1)
         else:
@@ -108,10 +116,10 @@ class Sample(object):
         popset = set(populations)
         num_mutants = np.zeros((len(popset), self.segsites), dtype=int)
         if self.type == "TreeSequence":
-            for site in self.popdata.variants():
+            for siteidx, site in enumerate(self.popdata.variants()):
                 for pop in popset:
-                    num_mutants[pop, site] = (np.count_nonzero(
-                        site.genotypes[np.nonzero(populations == pop)]
+                    num_mutants[pop, siteidx] = (np.count_nonzero(
+                        site.genotypes[populations == pop]
                         )
                     )
         else:
@@ -244,21 +252,17 @@ class MetaSample(Sample):
                 and not force_meta)):
             raise Exception(
                 "Only 1 population provided. "
-                "Use force_meta for MetaSample or use Sample."
+                "Use force_meta=True for MetaSample or use Sample."
                 )
         else:
             self.npop = (popdata.num_populations
                          if self.type == "TreeSequence"
-                         else len((populations)))
+                         else len(populations))
         self.pop_sample_sizes = np.array(
             [np.count_nonzero(np.full(self.nchrom, x) == populations)
              for x in set(populations)]
             )
         self.populations = populations
-
-
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
 
 
 def main():
