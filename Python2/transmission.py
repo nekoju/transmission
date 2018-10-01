@@ -67,15 +67,26 @@ class Sample(object):
             replace (bool): calculate heterozygosity with replacement or not
             average (bool): whether to average H values for all sites
             bias (bool): whether to apply bias-correction to calculations
+            by_population (bool): whether to calculate heterozygosity by
+                population, or alternatively, as a metapopulation (H_T). Used
+                by MetaSample.hs() and MetaSample.ht()
         """
+        # Check if multiple populations are provided or desired
+        try:
+            if by_population:
+                populations = self.populations
+            else:
+                populations = np.zeros(self.nchrom)
+        except NameError:
+            populations = self.populations
         # populations for portability to MetaSample
-        popset = set(self.populations)
+        popset = set(populations)
         # Each row in harray is a population; each column a snp.
         harray = (np.zeros(len(popset), dtype=int)
                   if average
                   else np.zeros((len(popset), self.segsites), dtype=int))
         # k=sum of number of mutants per site, klist=list of those sums
-        num_mutants = self.num_mutants(self.populations)
+        num_mutants = self.num_mutants(populations)
         if replace:
             parray = (num_mutants.T / self.pop_sample_sizes).T
             harray = 2 * parray * (1 - parray)
