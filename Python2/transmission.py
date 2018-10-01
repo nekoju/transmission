@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+import collections
 import numpy as np
 import msprime as ms
 import pdb
@@ -27,18 +28,23 @@ class Sample(object):
                 Alternatively, an object of class "TreeSequence" can be
                 provided and the relevant attributes will be inferred.
                 Note that this it the transpose of
-                msprime.TreeSequence.genotype_matrix()
-
+                msprime.TreeSequence.genotype_matrix(). This accomodates
+                generators output by msprime.simulate() num_replicates
+                argument and accepts such an iterable  while returning
+                a tuple of "TreeSequence" or "np.ndarray"
+                objects.
         """
-        if type(popdata).__name__ == "TreeSequence":
-            self.segsites = popdata.num_sites
+
+        if isinstance(popdata, collections.Iterator):
+            self.popdata = tuple(popdata)
+        else:
+            self.popdata = tuple(popdata for _ in (0, ))
+        if type(self.popdata[0]).__name__ == "TreeSequence":
             self.nchrom = popdata.num_samples
             self.type = "TreeSequence"
         else:
-            self.segsites = popdata.shape[1]
-            self.nchrom = popdata.shape[0]
+            self.nchrom = self.popdata[0].shape[0]
             self.type = "ndarray"
-        self.popdata = popdata
         self.populations = np.zeros(self.nchrom)
         self.pop_sample_sizes = self.nchrom
 
@@ -55,10 +61,13 @@ class Sample(object):
         Sample.gtmatrix() returns a
         self.nchrom X self.sites matrix of sample genotypes.
         """
-        if self.type == "TreeSequence":
-            return self.popdata.genotype_matrix().T
-        else:
-            return self.popdata
+        out = []
+        for rep in self.popdata:
+            if self.type == "TreeSequence":
+                out.append(self.popdata.genotype_matrix().T)
+            else:
+                out.append(self.popdata)
+        return out
 
     def h(self, replace=False, average=False, bias=True, **kwargs):
         """
@@ -227,8 +236,8 @@ class Sample(object):
         """
         num_mutants = self.num_mutants()
         polymorphic = np.array(
-                [np.full(self.segsites, threshold) < num_mutants,
-                 num_mutants < np.full(self.segsites, self.nchrom - threshold)]
+            [np.full(self.segsites, threshold) < num_mutants,
+             num_mutants < np.full(self.segsites, self.nchrom - threshold)]
             ).all(axis=0)
         if "which" in output:
             which = np.nonzero(polymorphic)
