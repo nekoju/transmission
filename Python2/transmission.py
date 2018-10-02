@@ -40,7 +40,7 @@ class Sample(object):
         else:
             self.popdata = tuple(popdata for _ in (0, ))
         if type(self.popdata[0]).__name__ == "TreeSequence":
-            self.nchrom = popdata.num_samples
+            self.nchrom = self.popdata[0].num_samples
             self.type = "TreeSequence"
         else:
             self.nchrom = self.popdata[0].shape[0]
@@ -50,9 +50,11 @@ class Sample(object):
 
     def __str__(self):
         print(
-            "a {nchrom} chromosome sample with "
+            "a {reps} replicate {nchrom} chromosome sample with "
             "{segsites} segregating sites".format(
-                nchrom=self.nchrom, segsites=self.segsites
+                nchrom=self.nchrom,
+                segsites=self.segsites(),
+                reps=len(self.popdata)
                 )
             )
 
@@ -69,7 +71,8 @@ class Sample(object):
                 out.append(self.popdata)
         return out
 
-    def h(self, replace=False, average=False, bias=True, **kwargs):
+    def h(self, replace=False, average=False, bias=True,
+          by_population=False, **kwargs):
         """
         Calculate heterozygosity over sites in sample.
         Args:
@@ -77,77 +80,90 @@ class Sample(object):
             average (bool): whether to average H values for all sites
             bias (bool): whether to apply bias-correction to calculations
             by_population (bool): whether to calculate heterozygosity by
-                population, or alternatively, as a metapopulation (H_T). Used
-                by MetaSample.hs() and MetaSample.ht()
+                population, or alternatively, as a metapopulation (H_T).
         """
+
         # Check if multiple populations are provided or desired
-        try:
-            if by_population:
-                populations = self.populations
-            else:
-                populations = np.zeros(self.nchrom)
-        except NameError:
-            populations = self.populations
+        populations = (self.populations
+                       if by_population
+                       else np.zeros(self.nchrom))
         # populations for portability to MetaSample
         popset = set(populations)
+        out = []
         # Each row in harray is a population; each column a snp.
-        harray = (np.zeros(len(popset), dtype=int)
-                  if average
-                  else np.zeros((len(popset), self.segsites), dtype=int))
-        # k=sum of number of mutants per site, klist=list of those sums
-        num_mutants = self.num_mutants(populations)
-        if replace:
-            parray = (num_mutants.T / self.pop_sample_sizes).T
-            harray = 2 * parray * (1 - parray)
-        # heterozygosity should probably be calculated without replacement,
-        # especially with small samples
-        else:
-            harray = (
-                2 * np.true_divide(
-                    num_mutants.T, self.pop_sample_sizes
-                    ).T *
-                np.true_divide(
-                    (self.pop_sample_sizes - num_mutants.T),
-                    (self.pop_sample_sizes - 1)
-                    ).T
-                )
-        if bias:
-            harray = (
-                np.true_divide(
-                    self.pop_sample_sizes,
-                    ((self.pop_sample_sizes - 1))
-                )
-                * harray.T
-            ).T
-        if average:
-            return np.mean(harray, axis=1)
-        else:
-            return harray
+        for repidx, replicate in enumerate(self.popdata):
+            harray = (np.zeros(len(popset), dtype=int)
+                      if average
+                      else np.zeros(
+                          (len(popset), self.segsites()[repidx]),
+                          dtype=int)
+                      )
+            # k=sum of number of mutants per site, klist=list of those sums
+            num_mutants = self.num_mutants(populations)
+            if replace:
+                parray = (num_mutants.T / self.pop_sample_sizes).T
+                harray = 2 * parray * (1 - parray)
+            # heterozygosity should probably be calculated without replacement,
+            # especially with small samples
+            else:
+                harray = (
+                    2 * np.true_divide(
+                        num_mutants.T, self.pop_sample_sizes
+                        ).T *
+                    np.true_divide(
+                        (self.pop_sample_sizes - num_mutants.T),
+                        (self.pop_sample_sizes - 1)
+                        ).T
+                    )
+            if bias:
+                harray = (
+                    np.true_divide(
+                        self.pop_sample_sizes,
+                        ((self.pop_sample_sizes - 1))
+                    )
+                    * harray.T
+                ).T
+            if average:
+                out.append(np.mean(harray, axis=1))
+            else:
+                out.append(harray)
+        return out
 
-    def num_mutants(self, populations):
+    def num_mutants(self, popdata=None, populations):
         """
         Returns the number of mutant alleles observed at each site.
         Used by other methods.
 
         Args:
             populations (list, tuple, or np.ndarray): Ints corresponding to
-            which population each chromosome belongs.
+                which population each chromosome belongs.
+            popdata (TreeSequence object): Single replicate for which to 
+                compute num_mutants.
         """
         popset = set(populations)
-        num_mutants = np.zeros((len(popset), self.segsites), dtype=int)
-        if self.type == "TreeSequence":
-            for siteidx, site in enumerate(self.popdata.variants()):
-                for pop in popset:
-                    num_mutants[pop, siteidx] = (np.count_nonzero(
-                        site.genotypes[populations == pop]
+        popdata = (self.popdata
+                   if not popdata 
+                   else (popdata for _ in range(0, )))
+        out = []
+        for replicate in popdata:
+            num_mutants = np.zeros(
+                (len(popset), self.segsites(replicate)),
+                dtype=int
+                )
+            if self.type == "TreeSequence":
+                for siteidx, site in enumerate(replicate.variants()):
+                    for pop in popset:
+                        num_mutants[pop, siteidx] = (np.count_nonzero(
+                            site.genotypes[populations == pop]
+                            )
                         )
-                    )
-        else:
-            for pop in popset:
-                num_mutants[pop] = np.count_nonzero(
-                    self.gtmatrix[np.nonzero(populations == pop)], axis=0
-                    )
-        return num_mutants
+            else:
+                for pop in popset:
+                    num_mutants[pop] = np.count_nonzero(
+                        self.gtmatrix[np.nonzero(populations == pop)], axis=0
+                        )
+            out.append(num_mutants)
+        return out
 
     def pi(self, method="nei", *args, **kwargs):
         """
@@ -255,6 +271,15 @@ class Sample(object):
                 "Specify 'num' or 'which'.".format(output=output)
                 )
 
+    def segsites(self):
+        out = np.zeros(len(self.popdata))
+        for repidx, replicate in enumerate(self.popdata):
+            if self.type == "TreeSequence":
+                out[repidx] = replicate.num_sites
+            else:
+                out[repidx] = replicate.shape[1]
+        return out
+
 
 class MetaSample(Sample):
     """
@@ -268,16 +293,16 @@ class MetaSample(Sample):
         super(MetaSample, self).__init__(popdata)
         if (len(set(populations)) == 1
             or (self.type == "TreeSequence"
-                and popdata.num_populations == 1
+                and self.popdata[0].num_populations == 1
                 and not force_meta)):
             raise Exception(
                 "Only 1 population provided. "
                 "Use force_meta=True for MetaSample or use Sample."
                 )
         else:
-            self.npop = (popdata.num_populations
+            self.npop = (self.popdata[0].num_populations
                          if self.type == "TreeSequence"
-                         else len(populations))
+                         else len(set(populations)))
         self.pop_sample_sizes = np.array(
             [np.count_nonzero(np.full(self.nchrom, x) == populations)
              for x in set(populations)]
@@ -286,24 +311,20 @@ class MetaSample(Sample):
 
 
 def main():
-                # test = ms.simulate(sample_size=10, mutation_rate=1)
-    # matrix = Sample(test.genotype_matrix())
-    # print(matrix.gtmatrix)
-    # print("h =", matrix.h(average=True))
-    # print("pi =", matrix.pi())
-    test2 = np.array([[0, 0, 0], [1, 1, 1], [1, 1, 0], [1, 1, 0]])
-    testsample = Sample(test2)
-    # pi should be 1.125
-    print(testsample.pi())
-    print(testsample.pi("tajima"))
-    print(testsample.pi("h"))
-    test3 = ms.simulate(sample_size=10, mutation_rate=1)
-    testsample3 = Sample(test3)
-    print(testsample3.gtmatrix())
-    print(testsample.pi())
-
-    print(testsample3.polymorphic(output="num"))
-    print(testsample3.polymorphic(output="which"))
+    populations = [ms.PopulationConfiguration(10) for _ in range(3)]
+    migration = np.full((3, 3), 2.5)
+    for i in range(3):
+        for j in range(3):
+            if i == j:
+                migration[i, j] = 0
+    test = ms.simulate(
+            population_configurations=populations,
+            migration_matrix=migration,
+            mutation_rate=1.8 / 4,
+            num_replicates=4
+            )
+    testsample = MetaSample(test, populations=np.repeat(np.arange(3), 10))
+    testsample.h()
 
 
 if __name__ == "__main__":
