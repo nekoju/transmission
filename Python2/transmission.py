@@ -5,35 +5,6 @@ import msprime as ms
 import pdb
 
 
-class MetaSample(Sample):
-    """
-    Class representing a metapopulation sample and associated methods.
-    Input argument should be a nchrom X segsites np.ndarray with an
-    array listing to which population each chromosome belongs,
-    or an msprime.TreeSequence object.
-    """
-
-    def __init__(self, popdata, populations, force_meta=False):
-        super(MetaSample, self).__init__(popdata)
-        if (len(set(populations)) == 1
-            or (self.type == "TreeSequence"
-                and self.popdata[0].num_populations == 1
-                and not force_meta)):
-            raise Exception(
-                "Only 1 population provided. "
-                "Use force_meta=True for MetaSample or use Sample."
-                )
-        else:
-            self.npop = (self.popdata[0].num_populations
-                         if self.type == "TreeSequence"
-                         else len(set(populations)))
-        self.pop_sample_sizes = np.array(
-            [np.count_nonzero(np.full(self.nchrom, x) == populations)
-             for x in set(populations)]
-            )
-        self.populations = populations
-
-
 class Sample(object):
     """
     Coalescent simulation output representing a population class and methods.
@@ -105,6 +76,8 @@ class Sample(object):
           by_population=False, **kwargs):
         """
         Calculate heterozygosity over sites in sample.
+        Returns a list of np.ndarrays of dimensions npop X segsites,
+        or, if average==True, a npop X num_replicates np.ndarray.
         Args:
             replace (bool): calculate heterozygosity with replacement or not
             average (bool): whether to average H values for all sites
@@ -159,7 +132,7 @@ class Sample(object):
                 out.append(np.mean(harray, axis=1))
             else:
                 out.append(harray)
-        return out
+        return out if not average else np.array(out).T
 
     def num_mutants(self, populations, popdata=None):
         """
@@ -315,6 +288,35 @@ class Sample(object):
             else:
                 out[repidx] = replicate.shape[1]
         return out
+
+
+class MetaSample(Sample):
+    """
+    Class representing a metapopulation sample and associated methods.
+    Input argument should be a nchrom X segsites np.ndarray with an
+    array listing to which population each chromosome belongs,
+    or an msprime.TreeSequence object.
+    """
+
+    def __init__(self, popdata, populations, force_meta=False):
+        super(MetaSample, self).__init__(popdata)
+        if (len(set(populations)) == 1
+            or (self.type == "TreeSequence"
+                and self.popdata[0].num_populations == 1
+                and not force_meta)):
+            raise Exception(
+                "Only 1 population provided. "
+                "Use force_meta=True for MetaSample or use Sample."
+                )
+        else:
+            self.npop = (self.popdata[0].num_populations
+                         if self.type == "TreeSequence"
+                         else len(set(populations)))
+        self.pop_sample_sizes = np.array(
+            [np.count_nonzero(np.full(self.nchrom, x) == populations)
+             for x in set(populations)]
+            )
+        self.populations = populations
 
 
 def main():
