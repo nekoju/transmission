@@ -130,7 +130,12 @@ class Sample(object):
                 out.append(np.mean(harray, axis=1))
             else:
                 out.append(harray)
-        return out if not average else np.array(out).T[0]
+        if not average:
+            return out
+        elif not by_population:
+            return np.array(out).T[0]
+        else:
+            return np.array(out).T
 
     def num_mutants(self, populations, popdata=None):
         """
@@ -315,11 +320,12 @@ class MetaSample(Sample):
             )
         self.populations = populations
 
-    def fst(self, method="gst", average_first=True,
+    def fst(self, method="gst", average=True,
             return_scalar=False, **kwargs):
         if method == "gst":
             h_by_rep = self.h(by_population=True, average=True, **kwargs)
-            if average_first:
+            if average:
+                pdb.set_trace()
                 hbar_by_rep = np.average(
                         h_by_rep, axis=1, weights=self.segsites()
                     )
@@ -361,6 +367,9 @@ def main():
     print(a, b, end='\n')
     for array in a:
         print(array.shape)
+    print(testsample.fst())
+    print(testsample.fst(average=False, return_scalar=True))
+    print(testsample.fst(average=False))
 
 
 if __name__ == "__main__":
