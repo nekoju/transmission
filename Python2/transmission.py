@@ -318,6 +318,23 @@ class MetaSample(Sample):
             )
         self.populations = populations
 
+    def fst(self, method="gst", average_first=True):
+        if method == "gst":
+            h_by_rep = self.h(by_population=True, average=True)
+            if average_first:
+                hbar_by_rep = np.average(
+                        h_by_rep, axis=1, weights=self.segsites()
+                    )
+                hs = np.mean(hbar_by_rep)
+                ht = np.average(self.h(average=True), weights=self.segsites())
+                return 1 - hs / ht
+            else:
+                hs = np.mean(h_by_rep, axis=0)
+                ht = self.h(average=True)
+                return np.mean(1 - hs / ht)
+        else:
+            raise Exception("unsupported method")
+
 
 def main():
     population_configurations = [ms.PopulationConfiguration(10)
