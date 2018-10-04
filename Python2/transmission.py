@@ -69,9 +69,9 @@ class Sample(object):
         out = []
         for rep in self.popdata:
             if self.type == "TreeSequence":
-                out.append(self.popdata.genotype_matrix().T)
+                out.append(rep.genotype_matrix().T)
             else:
-                out.append(self.popdata)
+                out.append(rep)
         return out
 
     def h(self, replace=False, average=False, bias=True,
@@ -131,7 +131,7 @@ class Sample(object):
             else:
                 out.append(harray)
         if not average:
-            return out
+            return tuple(out)
         elif not by_population:
             return np.array(out).T[0]
         else:
@@ -320,56 +320,70 @@ class MetaSample(Sample):
             )
         self.populations = populations
 
-    def fst(self, method="gst", average=True,
-            return_scalar=False, **kwargs):
+    def fst(self, method="gst",
+            average_h=True, average_final=False, average_sites=True,
+            **kwargs):
         if method == "gst":
-            h_by_rep = self.h(by_population=True, average=True, **kwargs)
-            if average:
-                pdb.set_trace()
-                hbar_by_rep = np.average(
-                        h_by_rep, axis=1, weights=self.segsites()
-                    )
-                hs = np.mean(hbar_by_rep)
-                ht = np.average(
-                        self.h(average=True, **kwargs), weights=self.segsites()
+            h_by_site = self.h(by_population=True, **kwargs)
+            ht_by_site = self.h(**kwargs)
+            if average_sites:
+                if average_h:
+                    pdb.set_trace()
+                    hbar_by_rep = np.average(
+                            h_by_rep, axis=1, weights=self.segsites()
                         )
-                return 1 - hs / ht
+                    hs = np.mean(hbar_by_rep)
+                    ht = np.average(
+                            self.h(average=True, **kwargs),
+                            weights=self.segsites()
+                            )
+                    return 1 - hs / ht
+                else:
+                    hs = np.mean(h_by_rep, axis=0)
+                    ht = self.h(average=True, **kwargs)
+                    return ((1 - hs / ht)
+                            if not average_final
+                            else np.average(
+                                (1 - hs / ht), weights=self.segsites())
+                            )
             else:
-                hs = np.mean(h_by_rep, axis=0)
-                ht = self.h(average=True, **kwargs)
-                return ((1 - hs / ht)
-                        if not return_scalar
-                        else np.average(
-                            (1 - hs / ht), weights=self.segsites())
-                        )
+                hs = tuple([np.mean(x, axis=0) for x in h_by_site])
+                ht = self.h()
+                return [1 - np.true_divide(x, y) for x, y in (hs, ht)]
         else:
             raise Exception("invalid method {}".format(method))
 
 
 def main():
-    population_configurations = [ms.PopulationConfiguration(10)
-                                 for _ in range(3)]
-    migration = np.full((3, 3), 2.5)
-    for i in range(3):
-        for j in range(3):
+    d = 2
+    n = 4
+    population_configurations = [ms.PopulationConfiguration(n)
+                                 for _ in range(d)]
+    migration = np.full((d, d), 2.5)
+    for i in range(d):
+        for j in range(d):
             if i == j:
                 migration[i, j] = 0
     test = tuple(ms.simulate(
         population_configurations=population_configurations,
         migration_matrix=migration,
-        mutation_rate=1.8 / 4,
-        num_replicates=4
+        mutation_rate=1 / 4,
+        num_replicates=2,
+        random_seed=3
         ))
-    testsample = MetaSample(test, populations=np.repeat(np.arange(3), 10))
-    a = (testsample.h(average=False, by_population=True))
-    b = testsample.h()
+    testsample = MetaSample(test, populations=np.repeat(np.arange(d), 4))
+    # a = (testsample.h(average=False, by_population=True))
+    # b = testsample.h()
 
-    print(a, b, end='\n')
-    for array in a:
-        print(array.shape)
-    print(testsample.fst())
-    print(testsample.fst(average=False, return_scalar=True))
-    print(testsample.fst(average=False))
+    print(testsample.h(
+        bias=False, replace=True, average=False, by_population=True))
+    print(testsample.fst(average_ht=False, bias=False, replace=True))
+    # print(a, b, end='\n')
+    # for array in a:
+    #     print(array.shape)
+    # print(testsample.fst())
+    # print(testsample.fst(average=False, return_scalar=True))
+    # print(testsample.fst(average=False))
 
 
 if __name__ == "__main__":
