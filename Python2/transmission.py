@@ -325,9 +325,16 @@ class MetaSample(Sample):
             **kwargs):
         if method == "gst":
             if average_sites:
-
+                pdb.set_trace()
+                h_by_rep = self.h(average=True, by_population=True,
+                                  **kwargs)
+                hs_by_rep = np.average(h_by_rep, axis=0,
+                                       weights=self.pop_sample_sizes[0])
+                ht_by_rep = self.h(average=True, **kwargs)
                 if average_h:
-                    pass
+                    hs = np.average(hs_by_rep, weights=self.segsites())
+                    ht = np.average(ht_by_rep, weights=self.segsites())
+                    return 1 - hs / ht
                 else:
                     if average_final:
                         pass
@@ -367,7 +374,8 @@ def main():
     # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
 
-    print(testsample.fst(average_sites=False, bias=False, replace=True))
+    print(testsample.fst(average_sites=True, average_h=True,
+                         bias=False, replace=True))
     # print(a, b, end='\n')
     # for array in a:
     #     print(array.shape)
