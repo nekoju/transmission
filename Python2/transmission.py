@@ -325,7 +325,6 @@ class MetaSample(Sample):
             **kwargs):
         if method == "gst":
             if average_sites:
-                pdb.set_trace()
                 h_by_rep = self.h(average=True, by_population=True,
                                   **kwargs)
                 hs_by_rep = np.average(h_by_rep, axis=0,
@@ -336,8 +335,11 @@ class MetaSample(Sample):
                     ht = np.average(ht_by_rep, weights=self.segsites())
                     return 1 - hs / ht
                 else:
+                    fst = 1 - np.true_divide(hs_by_rep, ht_by_rep)
                     if average_final:
-                        pass
+                        return np.average(fst, weights=self.segsites())
+                    else:
+                        return fst
             else:
                 h_by_site = self.h(by_population=True, **kwargs)
                 hs = tuple([np.average(
@@ -374,8 +376,10 @@ def main():
     # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
 
-    print(testsample.fst(average_sites=True, average_h=True,
-                         bias=False, replace=True))
+    print(testsample.fst(
+        average_sites=True, average_h=False, average_final=True,
+        bias=False, replace=True)
+        )
     # print(a, b, end='\n')
     # for array in a:
     #     print(array.shape)
