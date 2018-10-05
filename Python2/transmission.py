@@ -323,6 +323,22 @@ class MetaSample(Sample):
     def fst(self, method="gst",
             average_h=True, average_final=False, average_sites=True,
             **kwargs):
+        """
+        Returns specified fst statistic.
+        Args:
+            method (str): Only "gst" is supported right now. This returns the
+            classic (ht - hs) / ht statistic.
+            average_sites (bool): Whether to average the heterozygosities
+                across sites when calculating. If false, will return a
+                num_replicates list of self.segsites()-long arrays.
+            average_h (bool): Whether to average heterozygisities before taking
+                their ration to return fst. If true, will return 1 fst value.
+                Redundant if average_sites.
+            average_final (bool): Whether to average final fst values. If true,
+                returns 1 fst value, otherwise 1 value for each replicate in an
+                array. Redundant if average_h.
+            **kwargs (): Optional arguments for self.h().
+        """
         if method == "gst":
             if average_sites:
                 h_by_rep = self.h(average=True, by_population=True,
