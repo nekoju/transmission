@@ -49,7 +49,7 @@ class Sample(object):
             self.nchrom = self.popdata[0].shape[0]
             self.type = "ndarray"
         self.populations = np.zeros(self.nchrom)
-        self.pop_sample_sizes = np.array([self.nchrom])
+        self.pop_sample_sizes = np.array(self.nchrom)
 
     def __str__(self):
         print(
@@ -316,7 +316,7 @@ class MetaSample(Sample):
                          else len(set(populations)))
         self.pop_sample_sizes = np.array(
             [[np.count_nonzero(np.full(self.nchrom, x) == populations)
-             for x in set(populations)]]
+              for x in set(populations)]]
             )
         self.populations = populations
 
@@ -324,32 +324,24 @@ class MetaSample(Sample):
             average_h=True, average_final=False, average_sites=True,
             **kwargs):
         if method == "gst":
-            h_by_site = self.h(by_population=True, **kwargs)
-            ht_by_site = self.h(**kwargs)
             if average_sites:
+
                 if average_h:
-                    pdb.set_trace()
-                    hbar_by_rep = np.average(
-                            h_by_rep, axis=1, weights=self.segsites()
-                        )
-                    hs = np.mean(hbar_by_rep)
-                    ht = np.average(
-                            self.h(average=True, **kwargs),
-                            weights=self.segsites()
-                            )
-                    return 1 - hs / ht
+                    pass
                 else:
-                    hs = np.mean(h_by_rep, axis=0)
-                    ht = self.h(average=True, **kwargs)
-                    return ((1 - hs / ht)
-                            if not average_final
-                            else np.average(
-                                (1 - hs / ht), weights=self.segsites())
-                            )
+                    if average_final:
+                        pass
             else:
-                hs = tuple([np.mean(x, axis=0) for x in h_by_site])
-                ht = self.h()
-                return [1 - np.true_divide(x, y) for x, y in (hs, ht)]
+                h_by_site = self.h(by_population=True, **kwargs)
+                hs = tuple([np.average(
+                                x, axis=0, weights=self.pop_sample_sizes[0]
+                                )
+                            for x in h_by_site])
+                ht = tuple(
+                        [x[0] for x in self.h(**kwargs)]
+                    )
+                # returns num_replicates tuple of self.segsites() np.arrays
+                return tuple([(1 - x / y) for x, y in zip(hs, ht)])
         else:
             raise Exception("invalid method {}".format(method))
 
@@ -375,9 +367,7 @@ def main():
     # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
 
-    print(testsample.h(
-        bias=False, replace=True, average=False, by_population=True))
-    print(testsample.fst(average_ht=False, bias=False, replace=True))
+    print(testsample.fst(average_sites=False, bias=False, replace=True))
     # print(a, b, end='\n')
     # for array in a:
     #     print(array.shape)
