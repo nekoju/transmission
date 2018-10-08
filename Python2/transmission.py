@@ -321,7 +321,7 @@ class MetaSample(Sample):
         self.populations = populations
 
     def fst(self, method="gst",
-            average_h=True, average_final=False, average_sites=True,
+            summary="mean", average_final=False, average_sites=True,
             **kwargs):
         """
         Returns specified fst statistic.
@@ -331,42 +331,39 @@ class MetaSample(Sample):
             average_sites (bool): Whether to average the heterozygosities
                 across sites when calculating. If false, will return a
                 num_replicates list of self.segsites()-long arrays.
-            average_h (bool): Whether to average heterozygisities before taking
-                their ration to return fst. If true, will return 1 fst value.
-                Redundant if average_sites.
+            summary (str or tuple): The summary statistics returned for
+                replicates. Can take arguments "mean" or "sd" for standard
+                deviation. Returns a dictionary of the supplied statistics.
+                Redundant if not average_sites.
             average_final (bool): Whether to average final fst values. If true,
                 returns 1 fst value, otherwise 1 value for each replicate in an
-                array. Redundant if average_h.
+                array. Redundant if not average_sites.
             **kwargs (): Optional arguments for self.h().
         """
+        if isinstance(summary, str):
+            summary = (summary, )
         if method == "gst":
+            h_by_site = self.h(by_population=True, **kwargs)
+            hs = tuple([np.average(x, axis=0, weights=self.pop_sample_sizes[0])
+                        for x in h_by_site])
+            ht = tuple(
+                [x[0] for x in self.h(**kwargs)]
+                )
+            fst = tuple([(1 - x / y) for x, y in zip(hs, ht)])
             if average_sites:
-                h_by_rep = self.h(average=True, by_population=True,
-                                  **kwargs)
-                hs_by_rep = np.average(h_by_rep, axis=0,
-                                       weights=self.pop_sample_sizes[0])
-                ht_by_rep = self.h(average=True, **kwargs)
-                if average_h:
-                    hs = np.average(hs_by_rep, weights=self.segsites())
-                    ht = np.average(ht_by_rep, weights=self.segsites())
-                    return 1 - hs / ht
-                else:
-                    fst = 1 - np.true_divide(hs_by_rep, ht_by_rep)
-                    if average_final:
-                        return np.average(fst, weights=self.segsites())
-                    else:
-                        return fst
+                stats = []
+                if type(summary) == str:
+                    summary = (summary)
+                if "mean" in summary:
+                    stats.append(np.array([np.average(x) for x in fst]))
+                if "sd" in summary:
+                    stats.append(np.array([np.std(x) for x in fst]))
+                if average_final:
+                    stats = np.array([np.average(x, weights=self.segsites())
+                                      for x in stats])
+                return dict(zip(summary, stats))
             else:
-                h_by_site = self.h(by_population=True, **kwargs)
-                hs = tuple([np.average(
-                                x, axis=0, weights=self.pop_sample_sizes[0]
-                                )
-                            for x in h_by_site])
-                ht = tuple(
-                        [x[0] for x in self.h(**kwargs)]
-                    )
-                # returns num_replicates tuple of self.segsites() np.arrays
-                return tuple([(1 - x / y) for x, y in zip(hs, ht)])
+                return fst
         else:
             raise Exception("invalid method {}".format(method))
 
@@ -393,7 +390,7 @@ def main():
     # b = testsample.h()
 
     print(testsample.fst(
-        average_sites=True, average_h=False, average_final=True,
+        average_sites=True, summary=("mean", "sd"), average_final=True,
         bias=False, replace=True)
         )
     # print(a, b, end='\n')
