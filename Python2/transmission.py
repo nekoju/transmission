@@ -391,6 +391,7 @@ def ms_simulate(nchrom, num_populations, theta, M, tau, rho,
     # Number of output statistics plus parameters tau and rho.
     nstat = 5
     result = np.zeros((nrep, nstat))
+    nsamp = num_populations if not nsamp else nsamp
 
     @guvectorize([float64(float64, float64)], '(n, s), (), (), (), ()->(n, s)',
                  target=target)
@@ -401,6 +402,8 @@ def ms_simulate(nchrom, num_populations, theta, M, tau, rho,
                                  for _ in np.arange(nrep)])
             migration = np.full((num_populations, num_populations),
                                 M / (num_populations - 1))
+            for i in np.arange(num_populations):
+                migration[i, i] = 0
             tree = ms.simulate(
                         migration_matrix=migration,
                         population_configurations=populations
@@ -415,42 +418,29 @@ def ms_simulate(nchrom, num_populations, theta, M, tau, rho,
 
 
 def main():
-    d = 2
-    n = 4
-    population_configurations = [ms.PopulationConfiguration(n)
-                                 for _ in range(d)]
-    migration = np.full((d, d), 2.5)
-    for i in range(d):
-        for j in range(d):
-            if i == j:
-                migration[i, j] = 0
-    test = tuple(ms.simulate(
-        population_configurations=population_configurations,
-        migration_matrix=migration,
-        # reset to 1 / 4
-        # no_snps, set to 0.25 / 4
-        mutation_rate=1 / 4,
-        num_replicates=2,
-        # reset to 3
-        # 6 gives one popln with no snps and one with
-        random_seed=3
-        ))
-    testsample = MetaSample(test, populations=np.repeat(np.arange(d), 4))
-    # a = (testsample.h(average=False, by_population=True))
+    # d = 2
+    # n = 4
+    # population_configurations = [ms.PopulationConfiguration(n)
+    #                              for _ in range(d)]
+    # migration = np.full((d, d), 2.5)
+    # for i in range(d):
+    #     for j in range(d):
+    #         if i == j:
+    #             migration[i, j] = 0
+    # test = tuple(ms.simulate(
+    #     population_configurations=population_configurations,
+    #     migration_matrix=migration,
+    #     # reset to 1 / 4
+    #     # no_snps, set to 0.25 / 4
+    #     mutation_rate=1 / 4,
+    #     num_replicates=2,
+    #     # reset to 3
+    #     # 6 gives one popln with no snps and one with
+    #     random_seed=3
+    #     ))
+    # # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
-
-    print(testsample.h(by_population=True))
-    print(testsample.fst(
-        average_sites=True, summary=("mean", "sd"), average_final=True,
-        bias=False, replace=True)
-        )
-    # print(a, b, end='\n')
-    # for array in a:
-    #     print(array.shape)
-    # print(testsample.fst())
-    # print(testsample.fst(average=False, return_scalar=True))
-    # print(testsample.fst(average=False))
-    print(beta_nonst(0.5, 10, 0, 2, 10))
+    print(ms_simulate(4, 2, 1, 1, 1, 1, nsamp=None, nrep=2, target="cpu"))
 
 
 if __name__ == "__main__":
