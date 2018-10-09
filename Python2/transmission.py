@@ -2,6 +2,7 @@ from __future__ import print_function, division
 import collections
 import pdb
 
+from numba import guvectorize, float64
 import numpy as np
 import msprime as ms
 
@@ -385,6 +386,34 @@ def beta_nonst(alpha, beta, a=0, b=1, n=1):
     return np.random.beta(alpha, beta, n) * (b - a) + a
 
 
+def ms_simulate(nchrom, num_populations, theta, M, tau, rho,
+                nsamp=None, nrep=1, target="cpu"):
+    # Number of output statistics plus parameters tau and rho.
+    nstat = 5
+    result = np.zeros((nrep, nstat))
+
+    @guvectorize([float64(float64, float64)], '(n, s), (), (), (), ()->(n, s)',
+                 target=target)
+    def sim(result=result):
+        for i, param in enumerate(zip(tau, rho, theta)):
+            param = dict(zip(("tau", "rho", "theta"), param))
+            populations = tuple([ms.PopulationConfiguration(nchrom)
+                                 for _ in np.arange(nrep)])
+            migration = np.full((num_populations, num_populations),
+                                M / (num_populations - 1))
+            tree = ms.simulate(
+                        migration_matrix=migration,
+                        population_configurations=populations
+                    )
+            treesample = MetaSample(tree)
+            fst_summ = treesample.fst(average_sites=True, average_final=True,
+                                      summary=("mean", "sd"))
+            pi = treesample.pi(method="h")
+            result[i] = np.array((fst_summ["mean"], fst_summ["sd"], pi,
+                                 param["tau"], param["rho"]))
+        return result
+
+
 def main():
     d = 2
     n = 4
@@ -422,6 +451,7 @@ def main():
     # print(testsample.fst(average=False, return_scalar=True))
     # print(testsample.fst(average=False))
     print(beta_nonst(0.5, 10, 0, 2, 10))
+
 
 if __name__ == "__main__":
     main()
