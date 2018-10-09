@@ -93,43 +93,41 @@ class Sample(object):
                        if by_population
                        else np.zeros(self.nchrom, dtype=int))
         # populations for portability to MetaSample
-        # popset = set(populations)
         out = []
         # Each row in harray is a population; each column a snp.
         for repidx, replicate in enumerate(self.popdata):
-            # harray = (np.zeros(len(popset), dtype=int)
-            #           if average
-            #           else np.zeros(
-            #             (len(popset), self.segsites()[repidx]),
-            #             dtype=int)
-            #           )
-            # k=sum of number of mutants per site, klist=list of those sums
-            num_mutants = self.num_mutants(populations, replicate)
-            sample_sizes = (self.pop_sample_sizes
-                            if by_population
-                            else np.array([self.nchrom]))
-            if replace:
-                parray = np.true_divide(num_mutants, sample_sizes.T)
-                harray = 2 * parray * (1 - parray)
-            # heterozygosity should probably be calculated without replacement,
-            # especially with small samples
-            else:
-                harray = (
-                    2 * np.true_divide(
-                        num_mutants, sample_sizes.T
-                        ) *
-                    np.true_divide(
-                        (sample_sizes.T - num_mutants),
-                        (sample_sizes - 1).T
+            if replicate.num_sites != 0:
+                num_mutants = self.num_mutants(populations, replicate)
+                sample_sizes = (self.pop_sample_sizes
+                                if by_population
+                                else np.array([self.nchrom]))
+                if replace:
+                    parray = np.true_divide(num_mutants, sample_sizes.T)
+                    harray = 2 * parray * (1 - parray)
+                # heterozygosity should probably be calculated without
+                # replacement especially with small samples
+                else:
+                    harray = (
+                        2 * np.true_divide(
+                            num_mutants, sample_sizes.T
+                            ) *
+                        np.true_divide(
+                            (sample_sizes.T - num_mutants),
+                            (sample_sizes - 1).T
+                            )
                         )
-                    )
-            if bias:
-                harray = (np.true_divide(sample_sizes, (sample_sizes - 1)).T
-                          * harray)
-            if average:
-                out.append(np.mean(harray, axis=1))
+                if bias:
+                    harray = (np.true_divide(
+                        sample_sizes, (sample_sizes - 1)
+                        ).T * harray)
+                if average:
+                    out.append(np.mean(harray, axis=1))
+                else:
+                    out.append(harray)
+            elif by_population:
+                out.append(np.full(self.npop, float("nan")))
             else:
-                out.append(harray)
+                out.append(np.full(1, float('nan')))
         if not average:
             return tuple(out)
         elif not by_population:
@@ -381,14 +379,19 @@ def main():
     test = tuple(ms.simulate(
         population_configurations=population_configurations,
         migration_matrix=migration,
-        mutation_rate=1 / 4,
+        # reset to 1
+        # no_snps, set to 0.25 / 4
+        mutation_rate=0.25 / 4,
         num_replicates=2,
-        random_seed=3
+        # reset to 3
+        # 6 gives one popln with no snps and one with
+        random_seed=6
         ))
     testsample = MetaSample(test, populations=np.repeat(np.arange(d), 4))
     # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
 
+    print(testsample.h(by_population=True))
     print(testsample.fst(
         average_sites=True, summary=("mean", "sd"), average_final=True,
         bias=False, replace=True)
