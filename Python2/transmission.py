@@ -370,6 +370,21 @@ class MetaSample(Sample):
             raise Exception("invalid method {}".format(method))
 
 
+def beta_nonst(alpha, beta, a=0, b=1, n=1):
+    """
+    Draws instances of a random variable from a nonstandard beta distribution
+    over the interval [a, b]. By default returns standard beta variables.
+    Args:
+        alpha (float): The first beta shape parameter. A nonnegative float.
+        beta (float): The second beta shape parameter.
+        a (float): The beginning of the interval of the distribution.
+        b (float): The end of the interval of the distribution.
+        n (int): The number of observations to be drawn.
+    """
+
+    return np.random.beta(alpha, beta, n) * (b - a) + a
+
+
 def main():
     d = 2
     n = 4
@@ -406,7 +421,7 @@ def main():
     # print(testsample.fst())
     # print(testsample.fst(average=False, return_scalar=True))
     # print(testsample.fst(average=False))
-
+    print(beta_nonst(0.5, 10, 0, 2, 10))
 
 if __name__ == "__main__":
     main()
