@@ -1,8 +1,9 @@
 from __future__ import print_function, division
 import collections
+import pdb
+
 import numpy as np
 import msprime as ms
-import pdb
 
 
 class Sample(object):
@@ -341,13 +342,15 @@ class MetaSample(Sample):
         if isinstance(summary, str):
             summary = (summary, )
         if method == "gst":
-            h_by_site = self.h(by_population=True, **kwargs)
+            ind = np.where(self.segsites() != 0)[0]
+            h_by_site = tuple([self.h(by_population=True, **kwargs)[i]
+                               for i in ind])
             hs = tuple([np.average(x, axis=0, weights=self.pop_sample_sizes[0])
                         for x in h_by_site])
             ht = tuple(
-                [x[0] for x in self.h(**kwargs)]
+                    [x[0] for x in tuple([self.h(**kwargs)[i] for i in ind])]
                 )
-            fst = tuple([(1 - x / y) for x, y in zip(hs, ht)])
+            fst = tuple([(1 - np.true_divide(x, y)) for x, y in zip(hs, ht)])
             if average_sites:
                 stats = []
                 if type(summary) == str:
@@ -357,8 +360,9 @@ class MetaSample(Sample):
                 if "sd" in summary:
                     stats.append(np.array([np.std(x) for x in fst]))
                 if average_final:
-                    stats = np.array([np.average(x, weights=self.segsites())
-                                      for x in stats])
+                    stats = np.array(
+                        [np.average(x, weights=self.segsites()[ind])
+                         for x in stats])
                 return dict(zip(summary, stats))
             else:
                 return fst
@@ -379,13 +383,13 @@ def main():
     test = tuple(ms.simulate(
         population_configurations=population_configurations,
         migration_matrix=migration,
-        # reset to 1
+        # reset to 1 / 4
         # no_snps, set to 0.25 / 4
-        mutation_rate=0.25 / 4,
+        mutation_rate=1 / 4,
         num_replicates=2,
         # reset to 3
         # 6 gives one popln with no snps and one with
-        random_seed=6
+        random_seed=3
         ))
     testsample = MetaSample(test, populations=np.repeat(np.arange(d), 4))
     # a = (testsample.h(average=False, by_population=True))
