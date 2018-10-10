@@ -74,7 +74,7 @@ class Sample(object):
                 out.append(rep.genotype_matrix().T)
             else:
                 out.append(rep)
-        return out
+        return out if len(out) > 1 else out[0]
 
     def h(self, replace=False, average=False, bias=True,
           by_population=False, **kwargs):
@@ -346,24 +346,39 @@ class MetaSample(Sample):
             ind = np.where(self.segsites() != 0)[0]
             h_by_site = tuple([self.h(by_population=True, **kwargs)[i]
                                for i in ind])
-            hs = tuple([np.average(x, axis=0, weights=self.pop_sample_sizes[0])
-                        for x in h_by_site])
-            ht = tuple(
-                    [x[0] for x in tuple([self.h(**kwargs)[i] for i in ind])]
+            hs = tuple(
+                    [np.average(
+                     x, axis=0, weights=self.pop_sample_sizes[0])
+                     for x in h_by_site]
                 )
-            fst = tuple([(1 - np.true_divide(x, y)) for x, y in zip(hs, ht)])
+            ht = tuple(
+                    [x[0] for x in tuple([self.h(**kwargs)[i]
+                     for i in ind])]
+                )
+            fst = tuple([(1 - np.true_divide(x, y))
+                         for x, y
+                         in zip(hs, ht)])
             if average_sites:
                 stats = []
                 if type(summary) == str:
-                    summary = (summary)
+                    summary = tuple(summary)
                 if "mean" in summary:
-                    stats.append(np.array([np.average(x) for x in fst]))
+                    if self.segsites().any():
+                        stats.append([np.average(x) for x in fst])
+                    else:
+                        stats.append(0.0)
                 if "sd" in summary:
-                    stats.append(np.array([np.std(x) for x in fst]))
+                    if self.segsites().any():
+                        stats.append([np.std(x) for x in fst])
+                    else:
+                        stats.append(0.0)
                 if average_final:
-                    stats = np.array(
-                        [np.average(x, weights=self.segsites()[ind])
-                         for x in stats])
+                    try:
+                        stats = [np.average(
+                                 x, weights=self.segsites()[ind])
+                                 for x in stats]
+                    except Exception:
+                        stats = np.array([0.0 for _ in stats])
                 return dict(zip(summary, stats))
             else:
                 return fst
@@ -386,35 +401,51 @@ def beta_nonst(alpha, beta, a=0, b=1, n=1):
     return np.random.beta(alpha, beta, n) * (b - a) + a
 
 
-def ms_simulate(nchrom, num_populations, theta, M, tau, rho,
-                nsamp=None, nrep=1, target="cpu"):
+def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
+                prior_params=np.array([[1, 1], [1, 1]]),
+                nsamp_populations=None, nrep=1, target="cpu", **kwargs):
     # Number of output statistics plus parameters tau and rho.
-    nstat = 5
-    result = np.zeros((nrep, nstat))
-    nsamp = num_populations if not nsamp else nsamp
 
-    @guvectorize([float64(float64, float64)], '(n, s), (), (), (), ()->(n, s)',
-                 target=target)
-    def sim(result=result):
-        for i, param in enumerate(zip(tau, rho, theta)):
-            param = dict(zip(("tau", "rho", "theta"), param))
-            populations = tuple([ms.PopulationConfiguration(nchrom)
-                                 for _ in np.arange(nrep)])
-            migration = np.full((num_populations, num_populations),
-                                M / (num_populations - 1))
-            for i in np.arange(num_populations):
-                migration[i, i] = 0
+    # @guvectorize([(float64[:], float64[:, :])], '(n), (s)->(n, s)',
+                    # target=target)
+    def sim(theta, nstat, out):
+        for i, t in enumerate(theta):
             tree = ms.simulate(
                         migration_matrix=migration,
-                        population_configurations=populations
+                        population_configurations=population_config,
+                        mutation_rate=t / 4,
+                        **kwargs
                     )
-            treesample = MetaSample(tree)
+            treesample = MetaSample(tree, populations)
             fst_summ = treesample.fst(average_sites=True, average_final=True,
-                                      summary=("mean", "sd"))
-            pi = treesample.pi(method="h")
-            result[i] = np.array((fst_summ["mean"], fst_summ["sd"], pi,
-                                 param["tau"], param["rho"]))
-        return result
+                                      summary=("mean", "sd"), **kwargs)
+            pi = treesample.pi(**kwargs)
+            out[i] = np.array((fst_summ["mean"], fst_summ["sd"], pi,
+                               tau[i], rho[i]))
+
+    nstat = 5
+    out = np.zeros((num_simulations, nstat))
+    populations = np.repeat(np.arange(num_populations), nchrom)
+    population_config = tuple([ms.PopulationConfiguration(nchrom)
+                               for _ in np.arange(nrep)])
+    nsamp_populations = (num_populations
+                         if not nsamp_populations
+                         else nsamp_populations)
+    migration = np.full((num_populations, num_populations),
+                        M / (num_populations - 1))
+    for i in np.arange(num_populations):
+        migration[i, i] = 0
+    tau = beta_nonst(prior_params[0, 0], prior_params[0, 1],
+                     n=num_simulations)
+    rho = beta_nonst(prior_params[1, 0], prior_params[1, 1], a=0, b=2,
+                     n=num_simulations)
+    theta = host_theta * np.true_divide(
+        rho,
+        tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
+        )
+
+    sim(theta, nstat, out)
+    return out
 
 
 def main():
@@ -440,7 +471,8 @@ def main():
     #     ))
     # # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
-    print(ms_simulate(4, 2, 1, 1, 1, 1, nsamp=None, nrep=2, target="cpu"))
+    print(ms_simulate(4, 2, 1, 1, 100, nsamp_populations=None, nrep=2,
+          target="cpu", random_seed=3))
 
 
 if __name__ == "__main__":
