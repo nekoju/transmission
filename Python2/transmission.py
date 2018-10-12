@@ -176,12 +176,12 @@ class Sample(object):
         else:
             return out[0]
 
-    def pi(self, method="nei", *args, **kwargs):
+    def pi(self, pi_method="nei", *args, **kwargs):
         """
         Calculates different metrics of nucleotide diversity.
 
         Args:
-            method (str): what method to use to calculate pi.
+            pi_method (str): what method to use to calculate pi.
             available methods are 'nei', 'tajima', and 'h'.
                 nei: \sum_{ij} x_i x_j pi_{ij} where x_y is the
                     frequency of the yth sequence and pi_{ij} is the
@@ -195,7 +195,7 @@ class Sample(object):
                     namely 'bias' and 'replace'.
         """
 
-        if method is "nei":
+        if pi_method is "nei":
             # Hash rows of genotype matrix to reduce time comparing.
             hashes = np.apply_along_axis(
                     lambda row: hash(tuple(row)), 1, self.gtmatrix()
@@ -229,7 +229,7 @@ class Sample(object):
                                        )
                                    )
             return nucdiv
-        elif method is "tajima":
+        elif pi_method is "tajima":
             k = 0
             # count number of pairwise differences for all unique comparisons.
             gtmatrix = self.gtmatrix()
@@ -240,10 +240,10 @@ class Sample(object):
                         )
             # Formula: \sum{k_ij} / (nchrom choose 2)
             return k / ((self.nchrom - 1) * self.nchrom / 2)
-        elif method is "h":
+        elif pi_method is "h":
             return np.sum(self.h(**kwargs))
         else:
-            print("Unsupported method, {}".format(method))
+            print("Unsupported method, {}".format(pi_method))
 
     def polymorphic(self, threshold=0, output=("num", "which")):
         """
@@ -320,13 +320,13 @@ class MetaSample(Sample):
             )
         self.populations = populations
 
-    def fst(self, method="gst",
+    def fst(self, fst_method="gst",
             summary="mean", average_final=False, average_sites=True,
             **kwargs):
         """
         Returns specified fst statistic.
         Args:
-            method (str): Only "gst" is supported right now. This returns the
+            fst_method (str): Only "gst" is supported right now. This returns the
             classic (ht - hs) / ht statistic.
             average_sites (bool): Whether to average the heterozygosities
                 across sites when calculating. If false, will return a
@@ -342,7 +342,7 @@ class MetaSample(Sample):
         """
         if isinstance(summary, str):
             summary = (summary, )
-        if method == "gst":
+        if fst_method == "gst":
             ind = np.where(self.segsites() != 0)[0]
             h_by_site = tuple([self.h(by_population=True, **kwargs)[i]
                                for i in ind])
@@ -383,7 +383,7 @@ class MetaSample(Sample):
             else:
                 return fst
         else:
-            raise Exception("invalid method {}".format(method))
+            raise Exception("invalid method {}".format(fst_method))
 
 
 def beta_nonst(alpha, beta, a=0, b=1, n=1):
