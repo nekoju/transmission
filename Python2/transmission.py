@@ -326,8 +326,8 @@ class MetaSample(Sample):
         """
         Returns specified fst statistic.
         Args:
-            fst_method (str): Only "gst" is supported right now. This returns the
-            classic (ht - hs) / ht statistic.
+            fst_method (str): Only "gst" is supported right now. This returns
+            the classic (ht - hs) / ht statistic.
             average_sites (bool): Whether to average the heterozygosities
                 across sites when calculating. If false, will return a
                 num_replicates list of self.segsites()-long arrays.
@@ -403,7 +403,13 @@ def beta_nonst(alpha, beta, a=0, b=1, n=1):
 
 def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
                 prior_params=np.array([[1, 1], [1, 1]]),
-                nsamp_populations=None, nrep=1, target="cpu", **kwargs):
+                nsamp_populations=None, nrep=1, target="cpu", prior_seed=None,
+                **kwargs):
+    """
+    Generate random sample summary using msprime for the specified prior
+    distributions of tau (vertical transmission rate) and rho (sex ratio).
+
+    """
     # Number of output statistics plus parameters tau and rho.
 
     # @guvectorize([(float64[:], float64[:, :])], '(n), (s)->(n, s)',
@@ -432,9 +438,11 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
                          if not nsamp_populations
                          else nsamp_populations)
     migration = np.full((num_populations, num_populations),
-                        M / (num_populations - 1))
+                        np.true_divide(M, ((num_populations - 1) * 4)))
     for i in np.arange(num_populations):
         migration[i, i] = 0
+    if prior_seed:
+        np.random.seed(prior_seed)
     tau = beta_nonst(prior_params[0, 0], prior_params[0, 1],
                      n=num_simulations)
     rho = beta_nonst(prior_params[1, 0], prior_params[1, 1], a=0, b=2,
@@ -443,7 +451,6 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
         rho,
         tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
         )
-
     sim(theta, nstat, out)
     return out
 
@@ -471,7 +478,7 @@ def main():
     #     ))
     # # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
-    print(ms_simulate(4, 2, 1, 1, 100, nsamp_populations=None, nrep=2,
+    print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
           target="cpu", random_seed=3))
 
 
