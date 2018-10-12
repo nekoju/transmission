@@ -444,8 +444,7 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
 
     # Number of output statistics plus parameters tau and rho.
 
-    nstat = 5
-    out = np.zeros((num_simulations, nstat))
+    # nstat = 5
     populations = np.repeat(np.arange(num_populations), nchrom)
     population_config = tuple([ms.PopulationConfiguration(nchrom)
                                for _ in np.arange(nrep)])
@@ -472,13 +471,23 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
         population_config=population_config,
         populations=populations, **kwargs
         )
+    names = "fst_mean, fst_sd, pi, tau, rho"
+    formats = "f8, f8, f8, f8, f8"
     if num_cores:
         pool = Pool(processes=num_cores)
         out = np.array(pool.map(simpartial, params))
+        out = np.array(out, dtype=structure)
     else:
-        out = np.zeros((num_simulations, nstat))
-        for i, row in enumerate(params):
-            out[i] = simpartial(row)
+        pdb.set_trace()
+        out = np.apply_along_axis(simpartial, 1, params)
+        out = np.core.records.fromarrays(
+            out.T,
+            names=names,
+            formats=formats
+            )
+        # out = np.zeros((num_simulations, nstat), dtype=structure)
+        # for i, row in enumerate(params):
+        #     out[i] = simpartial(row)
     return out
 
 
@@ -537,7 +546,7 @@ def main():
     # # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
     print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
-                      random_seed=3, num_cores=2))
+                      random_seed=3, num_cores=None))
 
 
 if __name__ == "__main__":
