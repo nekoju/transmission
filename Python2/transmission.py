@@ -1,8 +1,9 @@
 from __future__ import print_function, division
 import collections
+import functools
+from multiprocessing import Pool
 import pdb
 
-from numba import guvectorize, float64
 import numpy as np
 import msprime as ms
 
@@ -403,8 +404,8 @@ def beta_nonst(alpha, beta, a=0, b=1, n=1):
 
 def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
                 prior_params=np.array([[1, 1], [1, 1]]),
-                nsamp_populations=None, nrep=1, target="cpu", prior_seed=None,
-                **kwargs):
+                nsamp_populations=None, nrep=1, num_cores=None,
+                prior_seed=None, **kwargs):
     """
     Generate random sample summary using msprime for the specified prior
     distributions of tau (vertical transmission rate) and rho (sex ratio).
@@ -434,9 +435,7 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
         nrep (int): Number of msprime replicates to run for each simulated
             parameter pair and the number of simulations in each
             metasimulation.
-        target (str): The target used for numba parallel operations. May
-            take values "cpu", "parallel", or "cuda" for single-thread
-            processing, multi-thread processing, or gpu computing respectively.
+        num_cores (int): The number of processing cores to use for computation.
         prior_seed (int): The seed used to draw samples for tau and rho.
             Setting a seed will allow repeatability of results.
         **kwargs (): Extra arguments for ms.simulate(), Sample.pi(), and
@@ -444,23 +443,6 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     """
 
     # Number of output statistics plus parameters tau and rho.
-
-    # @guvectorize([(float64[:], float64[:, :])], '(n), (s)->(n, s)',
-                    # target=target)
-    def sim(theta, nstat, out):
-        for i, t in enumerate(theta):
-            tree = ms.simulate(
-                        migration_matrix=migration,
-                        population_configurations=population_config,
-                        mutation_rate=t / 4,
-                        **kwargs
-                    )
-            treesample = MetaSample(tree, populations)
-            fst_summ = treesample.fst(average_sites=True, average_final=True,
-                                      summary=("mean", "sd"), **kwargs)
-            pi = treesample.pi(**kwargs)
-            out[i] = np.array((fst_summ["mean"], fst_summ["sd"], pi,
-                               tau[i], rho[i]))
 
     nstat = 5
     out = np.zeros((num_simulations, nstat))
@@ -484,8 +466,35 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
         rho,
         tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
         )
-    sim(theta, nstat, out)
+    params = zip(theta, tau, rho)
+    simpartial = functools.partial(
+        sim, migration=migration,
+        population_config=population_config,
+        populations=populations, **kwargs
+        )
+    if num_cores:
+        pool = Pool(processes=num_cores)
+        out = np.array(pool.map(simpartial, params))
+    else:
+        out = np.zeros((num_simulations, nstat))
+        for i, row in enumerate(params):
+            out[i] = simpartial(row)
     return out
+
+
+def sim(params, migration, population_config, populations, **kwargs):
+    theta, tau, rho = tuple(params)
+    tree = ms.simulate(
+                migration_matrix=migration,
+                population_configurations=population_config,
+                mutation_rate=theta / 4,
+                **kwargs
+            )
+    treesample = MetaSample(tree, populations)
+    fst_summ = treesample.fst(average_sites=True, average_final=True,
+                              summary=("mean", "sd"), **kwargs)
+    pi = treesample.pi(**kwargs)
+    return [fst_summ["mean"], fst_summ["sd"], pi, tau, rho]
 
 
 def main():
@@ -512,7 +521,7 @@ def main():
     # # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
     print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
-          target="cpu", random_seed=3))
+                      random_seed=3, num_cores=2))
 
 
 if __name__ == "__main__":
