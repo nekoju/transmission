@@ -409,7 +409,40 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     Generate random sample summary using msprime for the specified prior
     distributions of tau (vertical transmission rate) and rho (sex ratio).
 
+    From a supplied array of prior (hyper)parameters, ms_simulate generates a
+    num_simulations-tall array of parameters with which to estimate the
+    posterior distributions of tau and rho using abc methods. It then draws
+    nrep coalescent samples for each parameter combination and outputs a
+    summary table consisting of mean fst, fst standard deviation, pi, and the
+    original simulated parameter values for each metasimulation.
+
+    Args:
+        nchrom (int): The number of chromosomes to sample from each population
+        num_populations (int): The number of populations to include in the
+            migration matrix.
+        host_theta (float): The host's haploid theta (2 * Ne * mu * L)
+            estimated from mitochondrial or nuclear data.
+        M (float): The symmetric migration parameter (2 * Ne * m), estimated
+            from host mitochondrial or nuclear fst.
+        num_simulations (int): The number of tau-rho pairs of parameters
+            to draw from their priors, and hence the number of metasimulations
+            to include in the output.
+        prior_params (np.ndarray): A 2 x 2 np.ndarray representing the
+            tau (prior_params[0]) and rho (prior_params[1])
+            alpha (prior_params[:, 0]), and beta (prior_params[:, 1])
+            hyperparameters.
+        nrep (int): Number of msprime replicates to run for each simulated
+            parameter pair and the number of simulations in each
+            metasimulation.
+        target (str): The target used for numba parallel operations. May
+            take values "cpu", "parallel", or "cuda" for single-thread
+            processing, multi-thread processing, or gpu computing respectively.
+        prior_seed (int): The seed used to draw samples for tau and rho.
+            Setting a seed will allow repeatability of results.
+        **kwargs (): Extra arguments for ms.simulate(), Sample.pi(), and
+            Sample.fst().
     """
+
     # Number of output statistics plus parameters tau and rho.
 
     # @guvectorize([(float64[:], float64[:, :])], '(n), (s)->(n, s)',
