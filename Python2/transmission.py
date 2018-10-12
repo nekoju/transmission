@@ -483,6 +483,22 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
 
 
 def sim(params, migration, population_config, populations, **kwargs):
+    """
+    Runs actual simulation with ms. Intended as helper for ms_simulate().
+
+    At top level for picklability (for multiprocessing).
+
+    Args:
+        params (tuple): theta, tau, rho for simulation.
+        migration (np.ndarray): The migration matrix. Off-diagonals are
+            calculated as M / ((d - 1) * 4).
+        popoulation_config (list): List of population configurations for
+            msprime.
+        populations (np.ndarray): A nchrom np.ndarray indicating to which
+            population each chromosome belongs.
+        **kwargs (): Extra arguments for msprime.simulate(), Sample.pi(),
+            and Sample.h().
+    """
     theta, tau, rho = tuple(params)
     tree = ms.simulate(
                 migration_matrix=migration,
