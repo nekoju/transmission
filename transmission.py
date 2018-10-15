@@ -404,7 +404,7 @@ def beta_nonst(alpha, beta, a=0, b=1, n=1):
 
 def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
                 prior_params=np.array([[1, 1], [1, 1]]),
-                nsamp_populations=None, nrep=1, num_cores=None,
+                nsamp_populations=None, nrep=1, num_cores="auto",
                 prior_seed=None, **kwargs):
     """
     Generate random sample summary using msprime for the specified prior
@@ -435,7 +435,11 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
         nrep (int): Number of msprime replicates to run for each simulated
             parameter pair and the number of simulations in each
             metasimulation.
-        num_cores (int): The number of processing cores to use for computation.
+        num_cores (int or str): The number of cores to use for computation.
+            "auto" will automatically detect using multiprocessing.cpu_count().
+            None will use a single thread not routed through
+            multiprocessing.Pool, primarily for debugging and profiling.
+            An int value will specify the number of threads to use.
         prior_seed (int): The seed used to draw samples for tau and rho.
             Setting a seed will allow repeatability of results.
         **kwargs (): Extra arguments for ms.simulate(), Sample.pi(), and
