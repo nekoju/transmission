@@ -473,21 +473,17 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
         )
     names = "fst_mean, fst_sd, pi, tau, rho"
     formats = "f8, f8, f8, f8, f8"
+    structure = {"names": names.split(", "),
+                 "formats": formats.split(", ")}
     if num_cores:
+        if num_cores == "auto":
+            num_cores = None
         pool = Pool(processes=num_cores)
         out = np.array(pool.map(simpartial, params))
-        out = np.array(out, dtype=structure)
+        out = np.core.records.fromarrays(out.T, dtype=structure)
     else:
-        pdb.set_trace()
         out = np.apply_along_axis(simpartial, 1, params)
-        out = np.core.records.fromarrays(
-            out.T,
-            names=names,
-            formats=formats
-            )
-        # out = np.zeros((num_simulations, nstat), dtype=structure)
-        # for i, row in enumerate(params):
-        #     out[i] = simpartial(row)
+        out = np.core.records.fromarrays(out.T, dtype=structure)
     return out
 
 
@@ -547,6 +543,8 @@ def main():
     # b = testsample.h()
     print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
                       random_seed=3, num_cores=None))
+    print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
+                      random_seed=3, num_cores=4)["fst_mean"])
 
 
 if __name__ == "__main__":
