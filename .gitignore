@@ -1,3 +1,4 @@
 *seedms
-.python-version
+*/.python-version
 */transmission.pyc
+*.ipynb
