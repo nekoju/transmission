@@ -403,6 +403,7 @@ def beta_nonst(alpha, beta, a=0, b=1, n=1):
 
 
 def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
+                stats=("fst_mean", "fst_sd", "pi"),
                 prior_params=np.array([[1, 1], [1, 1]]),
                 nsamp_populations=None, nrep=1, num_cores="auto",
                 prior_seed=None, **kwargs):
@@ -448,7 +449,6 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
 
     # Number of output statistics plus parameters tau and rho.
 
-    # nstat = 5
     populations = np.repeat(np.arange(num_populations), nchrom)
     population_config = tuple([ms.PopulationConfiguration(nchrom)
                                for _ in np.arange(nrep)])
@@ -473,12 +473,10 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     simpartial = functools.partial(
         sim, migration=migration,
         population_config=population_config,
-        populations=populations, **kwargs
+        populations=populations, stats=stats, **kwargs
         )
-    names = "fst_mean, fst_sd, pi, tau, rho"
-    formats = "f8, f8, f8, f8, f8"
-    structure = {"names": names.split(", "),
-                 "formats": formats.split(", ")}
+    structure = {"names": tuple(list(stats) + ["tau", "rho"]),
+                 "formats": tuple(np.repeat("f8", len(stats) + 2))}
     if num_cores:
         if num_cores == "auto":
             num_cores = None
@@ -491,7 +489,7 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     return out
 
 
-def sim(params, migration, population_config, populations, **kwargs):
+def sim(params, migration, population_config, populations, stats, **kwargs):
     """
     Runs actual simulation with ms. Intended as helper for ms_simulate().
 
@@ -516,10 +514,24 @@ def sim(params, migration, population_config, populations, **kwargs):
                 **kwargs
             )
     treesample = MetaSample(tree, populations)
-    fst_summ = treesample.fst(average_sites=True, average_final=True,
-                              summary=("mean", "sd"), **kwargs)
-    pi = treesample.pi(**kwargs)
-    return [fst_summ["mean"], fst_summ["sd"], pi, tau, rho]
+    out = np.zeros((len(stats) + 2, ))
+    for i, stat in enumerate(stats):
+        if len(set(("fst_mean", "fst_sd")).intersection(set(stats))) > 0:
+            fst_summ = treesample.fst(average_sites=True, average_final=True,
+                                      summary=("mean", "sd"), **kwargs)
+        if stat == "pi_h":
+            out[i] = treesample.pi(method="h", **kwargs)
+        elif stat == "pi_nei":
+            out[i] = treesample.pi(method="nei", **kwargs)
+        elif stat == "pi_tajima":
+            out[i] = treesample.pi(method="tajima", **kwargs)
+        elif stat == "fst_mean":
+            out[i] = fst_summ["mean"]
+        elif stat == "fst_sd":
+            out[i] = fst_summ["sd"]
+    out[-2] = tau
+    out[-1] = rho
+    return out
 
 
 def main():
