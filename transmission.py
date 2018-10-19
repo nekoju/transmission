@@ -403,8 +403,9 @@ def beta_nonst(alpha, beta, a=0, b=1, n=1):
 
 
 def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
-                stats=("fst_mean", "fst_sd", "pi"),
-                prior_params=np.array([[1, 1], [1, 1]]),
+                stats=("fst_mean", "fst_sd", "pi_h"),
+                # 3.766e-3
+                prior_params={"sigma": 1., "tau": (1, 1), "rho": (1, 1)},
                 nsamp_populations=None, nrep=1, num_cores="auto",
                 prior_seed=None, **kwargs):
     """
@@ -429,10 +430,16 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
         num_simulations (int): The number of tau-rho pairs of parameters
             to draw from their priors, and hence the number of metasimulations
             to include in the output.
-        prior_params (np.ndarray): A 2 x 2 np.ndarray representing the
-            tau (prior_params[0]) and rho (prior_params[1])
-            alpha (prior_params[:, 0]), and beta (prior_params[:, 1])
-            hyperparameters.
+        prior_params (dict): A dict containing tuples specifiying the prior
+            distribution parameters for sigma, tau, and rho. That is, the
+            mutation rate multiplier, vertical transmission frequency, and
+            sex ratio. Optionally one may provide a scalar value for sigma to
+            fix the mutation rate multiplier.
+            Default mutation rate multiplier estimate from values found in:
+            Haag-Liautard et al. 2008. Direct Estimation of the mitochondrial
+            DNA mutation rate in Drosophila melanogaster. PLOS Biology.
+            Sproufske et al. 2018. High mutation rates limit evolutionary
+            adaptation in Escherichia coli. PLOS Genetics.
         nrep (int): Number of msprime replicates to run for each simulated
             parameter pair and the number of simulations in each
             metasimulation.
@@ -461,22 +468,34 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
         migration[i, i] = 0
     if prior_seed:
         np.random.seed(prior_seed)
-    tau = beta_nonst(prior_params[0, 0], prior_params[0, 1],
+    if isinstance(prior_params["sigma"], float):
+        sigma = np.full((num_simulations, ), prior_params["sigma"])
+    else:
+        sigma = exp(
+            np.random.normal(
+                prior_params["sigma"][0],
+                prior_params["sigma"][1],
+                num_simulations
+                )
+            )
+    tau = beta_nonst(prior_params["tau"][0], prior_params["tau"][1],
                      n=num_simulations)
-    rho = beta_nonst(prior_params[1, 0], prior_params[1, 1], a=0, b=2,
+    rho = beta_nonst(prior_params["rho"][0], prior_params["rho"][1], a=0, b=2,
                      n=num_simulations)
-    theta = host_theta * np.true_divide(
+    theta = host_theta * sigma * np.true_divide(
         rho,
         tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
         )
-    params = zip(theta, tau, rho)
+    params = zip(theta, sigma, tau, rho)
     simpartial = functools.partial(
         sim, migration=migration,
         population_config=population_config,
         populations=populations, stats=stats, **kwargs
         )
-    structure = {"names": tuple(list(stats) + ["tau", "rho"]),
-                 "formats": tuple(np.repeat("f8", len(stats) + 2))}
+    structure = {"names": tuple(list(stats) + prior_params.keys()),
+                 "formats": tuple(
+                     np.repeat("f8", len(stats) + len(prior_params))
+                     )}
     if num_cores:
         if num_cores == "auto":
             num_cores = None
@@ -506,7 +525,7 @@ def sim(params, migration, population_config, populations, stats, **kwargs):
         **kwargs (): Extra arguments for msprime.simulate(), Sample.pi(),
             and Sample.h().
     """
-    theta, tau, rho = tuple(params)
+    theta, sigma, tau, rho = params
     tree = ms.simulate(
                 migration_matrix=migration,
                 population_configurations=population_config,
@@ -514,7 +533,8 @@ def sim(params, migration, population_config, populations, stats, **kwargs):
                 **kwargs
             )
     treesample = MetaSample(tree, populations)
-    out = np.zeros((len(stats) + 2, ))
+    # - 1 for calculated theta
+    out = np.zeros((len(stats) + len(params) - 1, ))
     for i, stat in enumerate(stats):
         if len(set(("fst_mean", "fst_sd")).intersection(set(stats))) > 0:
             fst_summ = treesample.fst(average_sites=True, average_final=True,
@@ -529,6 +549,7 @@ def sim(params, migration, population_config, populations, stats, **kwargs):
             out[i] = fst_summ["mean"]
         elif stat == "fst_sd":
             out[i] = fst_summ["sd"]
+    out[-3] = sigma
     out[-2] = tau
     out[-1] = rho
     return out
