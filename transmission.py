@@ -8,6 +8,23 @@ import numpy as np
 import msprime as ms
 
 
+class Abc(object):
+    """
+    Interface to R package abc for estimating tau and rho posteriors.
+    """
+
+    def __init__(self, stats_observed, stats_simulated, params=None):
+        """
+        stats_observed(np.ndarray): 1 x nstat array of calculated summary
+            statistics from observed sample.
+        stats_simulated(np.ndarray): num_iterations x nstat array of summary
+            statistics from simulated data.
+        params (np.ndarray): num_iterations x 2 array of tau, rho values
+            simulated from their prior distributions. If None, will be read
+            from stats_simulated["rho"] and stats_simulated["rho"]
+        """
+
+
 class Sample(object):
     """
     Coalescent simulation output representing a population class and methods.
