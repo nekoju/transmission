@@ -471,7 +471,7 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     if isinstance(prior_params["sigma"], float):
         sigma = np.full((num_simulations, ), prior_params["sigma"])
     else:
-        sigma = exp(
+        sigma = np.exp(
             np.random.normal(
                 prior_params["sigma"][0],
                 prior_params["sigma"][1],
