@@ -6,6 +6,10 @@ import pdb
 
 import numpy as np
 import msprime as ms
+from rpy2.rinterface import NULL
+import rpy2.robjects as robjects
+from rpy2.robjects.packages import importr
+import rpy2.robjects.vectors as vectors
 
 
 class Abc(object):
@@ -15,15 +19,60 @@ class Abc(object):
 
     def __init__(self, stats_observed, stats_simulated, params=None):
         """
-        stats_observed(np.ndarray): 1 x nstat array of calculated summary
-            statistics from observed sample.
-        stats_simulated(np.ndarray): num_iterations x nstat array of summary
-            statistics from simulated data.
-        params (np.ndarray): num_iterations x 2 array of tau, rho values
-            simulated from their prior distributions. If None, will be read
-            from stats_simulated["rho"] and stats_simulated["rho"]
+        target(np.ndarray): 0 x nstat array of calculated summary
+            statistics from observed sample. If a structured array is provided,
+            column names will be returned.
+        param (np.ndarray): num_iterations x 2 array of tau, rho values
+            simulated from their prior distributions. If a structured array is
+            provided, column names will be returned.
+        sumstat(np.ndarray): num_iterations x num_statistics array of summary
+            statistics from simulated data. If a structured array is provided,
+            column names will be returned.
+        tol (float): Accepted proportion of sumstats accepted.
+        method (str): The ABC algorithm to use. May take "loclinear",
+            "neuralnet", "rejection", or "ridge" as values.
+        transf (str): Transformation to use for parameter values. May take
+            "log", "logit", or None.
+        logit_bounds (np.ndarray): A num_param X 2 matrix of bounds bounds
+            to use if transf="logit" is specified. Each parameter being
+            estimated goes in its own row, with the lower and upper bounds as
+            elements.
+        **kwargs: Additional arguments for r function 'abc'. Must be formatted
+            for passing to R as described in the documentation for rpy2.
         """
 
+        def rmatrix(rec_array):
+            """
+            Return an r matrix, preserving column and row names, from a
+            numpy record array.
+
+            Args:
+                rec_array (np.ndarray): A n X m numpy structured array.
+            """
+            return robjects.r.matrix(
+                rec_array, nrow=rec_array.shape[0], ncol=rec_array.shape[1],
+                dimnames=robjects.r.list(
+                    NULL,
+                    vectors.StrVector(rec_array.dtype.names
+                                      if rec_array.dtype.names
+                                      else NULL)
+                    )
+                )
+
+        robjects.numpy2ri.activate()
+        importr("abc")
+        r_abc = robjects.r.abc(
+            target=target,
+            param=rmatrix(param),
+            sumstat=rmatrix(sumstat),
+            tol=vectors.FloatVector(tol)[0],
+            method=vectors.StrVector(method)[0],
+            transf=NULL if not transf else vectors.StrVector(transf)[0],
+            logit_bounds=logit_bounds,
+            **kwargs
+            )
+
+>>>>>>> (garbage_commit): working on Abc.__init__()
 
 class Sample(object):
     """
@@ -421,7 +470,6 @@ def beta_nonst(alpha, beta, a=0, b=1, n=1):
 
 def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
                 stats=("fst_mean", "fst_sd", "pi_h"),
-                # 3.766e-3
                 prior_params={"sigma": 1., "tau": (1, 1), "rho": (1, 1)},
                 nsamp_populations=None, nrep=1, num_cores="auto",
                 prior_seed=None, **kwargs):
@@ -532,7 +580,7 @@ def sim(params, migration, population_config, populations, stats, **kwargs):
     At top level for picklability (for multiprocessing).
 
     Args:
-        params (tuple): theta, tau, rho for simulation.
+        params (tuple): theta, sigma, tau, rho for simulation.
         migration (np.ndarray): The migration matrix. Off-diagonals are
             calculated as M / ((d - 1) * 4).
         popoulation_config (list): List of population configurations for
@@ -595,10 +643,24 @@ def main():
     #     ))
     # # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
-    print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
-                      random_seed=3, num_cores=None))
-    print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
-                      random_seed=3, num_cores=4)["fst_mean"])
+    # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
+                      # random_seed=3, num_cores=None))
+    # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
+                      # random_seed=3, num_cores=4)["fst_mean"])
+    npop = 5
+    nchrom = 10
+    population_config = [ms.PopulationConfiguration(10) for _ in range(npop)]
+    populations = np.repeat(npop, nchrom)
+    migration = np.full((npop, npop), 10 / (npop - 1))
+    for i in range(populations):
+        migration[i, i] = 0
+    test = sim(
+        (1, 1, 1, 1),
+        migration=migration,
+        stats=("fst_mean", "fst_sd", "pi_h"),
+        population_config=population_config,
+        populations=populations
+        )
 
 
 if __name__ == "__main__":
