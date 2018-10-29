@@ -1,13 +1,13 @@
 from __future__ import print_function, division
-import collections
+import collections.abc as collections
 import functools
 from multiprocessing import Pool
-import pdb
 
 import numpy as np
 import msprime as ms
 from rpy2.rinterface import NULL
 import rpy2.robjects as robjects
+import rpy2.robjects.numpy2ri as numpy2ri
 from rpy2.robjects.packages import importr
 import rpy2.robjects.vectors as vectors
 
@@ -17,7 +17,10 @@ class Abc(object):
     Interface to R package abc for estimating tau and rho posteriors.
     """
 
-    def __init__(self, stats_observed, stats_simulated, params=None):
+    def __init__(self, target, param, sumstat, tol=0.1, method="rejection",
+                 transf={"tau": "logit", "rho": "logit", "sigma": None},
+                 logit_bounds={"tau": (0, 1), "rho": (0, 2), "sigma": (1, 1)},
+                 **kwargs):
         """
         target(np.ndarray): 0 x nstat array of calculated summary
             statistics from observed sample. If a structured array is provided,
@@ -31,16 +34,14 @@ class Abc(object):
         tol (float): Accepted proportion of sumstats accepted.
         method (str): The ABC algorithm to use. May take "loclinear",
             "neuralnet", "rejection", or "ridge" as values.
-        transf (str): Transformation to use for parameter values. May take
-            "log", "logit", or None.
-        logit_bounds (np.ndarray): A num_param X 2 matrix of bounds bounds
-            to use if transf="logit" is specified. Each parameter being
-            estimated goes in its own row, with the lower and upper bounds as
-            elements.
+        transf (str): A dictionary of parameter: transformation pairs to use
+            for parameter values. Each may take "log", "logit", or None.
+        logit_bounds (np.ndarray): A dictionary with elements "tau", "rho",
+            and "sigma" each representing a tuple of lower and upper bounds
+            for logit transformation to use if transf="logit" is specified.
         **kwargs: Additional arguments for r function 'abc'. Must be formatted
             for passing to R as described in the documentation for rpy2.
         """
-
         def rmatrix(rec_array):
             """
             Return an r matrix, preserving column and row names, from a
@@ -49,30 +50,96 @@ class Abc(object):
             Args:
                 rec_array (np.ndarray): A n X m numpy structured array.
             """
-            return robjects.r.matrix(
-                rec_array, nrow=rec_array.shape[0], ncol=rec_array.shape[1],
-                dimnames=robjects.r.list(
-                    NULL,
-                    vectors.StrVector(rec_array.dtype.names
-                                      if rec_array.dtype.names
-                                      else NULL)
-                    )
-                )
 
-        robjects.numpy2ri.activate()
+            if isinstance(rec_array, np.recarray):
+                # Extract data from record array, i.e. make into standard
+                # ndarray.
+                rec_array_in = (
+                    rec_array.view(np.float64)
+                    .reshape(
+                        (rec_array.shape + (-1,)
+                         if rec_array.shape
+                         else (1, -1))
+                        )
+                    )
+            else:
+                rec_array_in = rec_array
+            if rec_array.shape:
+                out = robjects.r.matrix(
+                    rec_array_in, nrow=rec_array.shape[0],
+                    ncol=(len(rec_array.dtype.names)
+                          if rec_array.dtype.names
+                          else rec_array.shape[1]),
+                    dimnames=robjects.r.list(
+                        NULL,
+                        (vectors.StrVector(rec_array.dtype.names)
+                         if rec_array.dtype.names
+                         else NULL)
+                        )
+                    )
+            else:
+                out = robjects.vectors.FloatVector(rec_array_in)
+                out.names = robjects.vectors.StrVector(
+                    rec_array.dtype.names
+                    )
+            return out
+
+        logit_bounds_matrix = (np.array([logit_bounds[x]
+                                         for x in param.dtype.names])
+                               .view(type=np.ndarray)
+                               .reshape((len(logit_bounds), -1)
+                                        )
+                               )
+        # Change transformation from None to "none" for R.
+        for key, value in transf.items():
+            if not value:
+                transf[key] = "none"
+        transf_list = [transf[x] for x in ["sigma", "tau", "rho"]]
+
+        numpy2ri.activate()
         importr("abc")
+        importr("base")
         r_abc = robjects.r.abc(
             target=target,
             param=rmatrix(param),
             sumstat=rmatrix(sumstat),
-            tol=vectors.FloatVector(tol)[0],
-            method=vectors.StrVector(method)[0],
-            transf=NULL if not transf else vectors.StrVector(transf)[0],
-            logit_bounds=logit_bounds,
+            tol=vectors.FloatVector([tol]),
+            method=vectors.StrVector([method]),
+            transf=("none" if not transf
+                    else vectors.StrVector(transf_list)),
+            logit_bounds=rmatrix(logit_bounds_matrix),
             **kwargs
             )
 
->>>>>>> (garbage_commit): working on Abc.__init__()
+        if method != "rejection":
+            self.adj_vaulues = np.array(r_abc.rx2("adj.values"))
+            self.weights = np.array(r_abc.rx2("weights"))
+            self.residuals = np.array(r_abc.rx2("residuals"))
+        if method == "neuralnet":
+            self.lambda_0 = np.array(r_abc.rx2("lambda"))
+        if r_abc.rx2("na.action") != NULL:
+            self.na_action = robjects.vectors.BoolVector(
+                r_abc.rx2("na.action")
+                )
+        if not r_abc.rx2("region") != NULL:
+            self.region = robjects.vectors.BoolVector(r_abc.rx2("region"))
+        self.unadj_values = np.array(r_abc.rx2("unadj.values"))
+        self.ss = np.array(r_abc.rx2("ss"))
+        self.dist = np.array(r_abc.rx2("dist"))
+        self.call = r_abc.rx2("call")
+        self.transf = np.array(r_abc.rx2("transf"))
+        self.logit_bounds = np.array(r_abc.rx2("logit.bounds"))
+        self.method = r_abc.rx2("method")
+        self.kernel = r_abc.rx2("kernel")
+        self.numparam = np.array(r_abc.rx2("num.param"))
+        self.numstat = np.array(r_abc.rx2("numstat"))
+        self.aic = np.array(r_abc.rx2("aic"))
+        self.bic = np.array(r_abc.rx2("bic"))
+        self.names = {"paramater_names": r_abc.rx("names")
+                      .rx2("parameter.names"),
+                      "statistics_names": r_abc.rx("names")
+                      .rx2("statistics.names")}
+
 
 class Sample(object):
     """
@@ -265,8 +332,8 @@ class Sample(object):
         if pi_method is "nei":
             # Hash rows of genotype matrix to reduce time comparing.
             hashes = np.apply_along_axis(
-                    lambda row: hash(tuple(row)), 1, self.gtmatrix()
-                    )
+                lambda row: hash(tuple(row)), 1, self.gtmatrix()
+                )
             seqs = dict.fromkeys(set(hashes))
             # Loop over seqs keys to calculate sequence frequncies
             # as well as create dict items for sequences themselves.
@@ -278,7 +345,7 @@ class Sample(object):
                     seqs[seqid]["p"] = 0.0
                 else:
                     seqs[seqid]["p"] = (np.count_nonzero(
-                                        seqid_array == hashes) /
+                        seqid_array == hashes) /
                                         self.nchrom)
                 # Associate sequences with hashes.
                 for i in np.arange(self.nchrom):
@@ -370,9 +437,9 @@ class MetaSample(Sample):
     def __init__(self, popdata, populations, force_meta=False):
         super(MetaSample, self).__init__(popdata)
         if (len(set(populations)) == 1
-            or (self.type == "TreeSequence"
-                and self.popdata[0].num_populations == 1
-                and not force_meta)):
+                or (self.type == "TreeSequence"
+                    and self.popdata[0].num_populations == 1
+                    and not force_meta)):
             raise Exception(
                 "Only 1 population provided. "
                 "Use force_meta=True for MetaSample or use Sample."
@@ -414,13 +481,13 @@ class MetaSample(Sample):
             h_by_site = tuple([self.h(by_population=True, **kwargs)[i]
                                for i in ind])
             hs = tuple(
-                    [np.average(
-                     x, axis=0, weights=self.pop_sample_sizes[0])
-                     for x in h_by_site]
+                [np.average(
+                    x, axis=0, weights=self.pop_sample_sizes[0])
+                 for x in h_by_site]
                 )
             ht = tuple(
-                    [x[0] for x in tuple([self.h(**kwargs)[i]
-                     for i in ind])]
+                [x[0] for x in tuple([self.h(**kwargs)[i]
+                                      for i in ind])]
                 )
             fst = tuple([(1 - np.true_divide(x, y))
                          for x, y
@@ -442,7 +509,7 @@ class MetaSample(Sample):
                 if average_final:
                     try:
                         stats = [np.average(
-                                 x, weights=self.segsites()[ind])
+                            x, weights=self.segsites()[ind])
                                  for x in stats]
                     except Exception:
                         stats = np.array([0.0 for _ in stats])
@@ -470,7 +537,7 @@ def beta_nonst(alpha, beta, a=0, b=1, n=1):
 
 def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
                 stats=("fst_mean", "fst_sd", "pi_h"),
-                prior_params={"sigma": 1., "tau": (1, 1), "rho": (1, 1)},
+                prior_params={"sigma": (0, 1), "tau": (1, 1), "rho": (1, 1)},
                 nsamp_populations=None, nrep=1, num_cores="auto",
                 prior_seed=None, **kwargs):
     """
@@ -523,7 +590,7 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
 
     populations = np.repeat(np.arange(num_populations), nchrom)
     population_config = tuple([ms.PopulationConfiguration(nchrom)
-                               for _ in np.arange(nrep)])
+                               for _ in np.arange(num_populations)])
     nsamp_populations = (num_populations
                          if not nsamp_populations
                          else nsamp_populations)
@@ -547,17 +614,20 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
                      n=num_simulations)
     rho = beta_nonst(prior_params["rho"][0], prior_params["rho"][1], a=0, b=2,
                      n=num_simulations)
+    sigma = np.random.normal(prior_params["sigma"][0],
+                             prior_params["sigma"][1],
+                             num_simulations)
     theta = host_theta * sigma * np.true_divide(
-        rho,
+        rho * sigma,
         tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
         )
-    params = zip(theta, sigma, tau, rho)
+    params = np.array([rho, tau, theta, sigma]).T
     simpartial = functools.partial(
         sim, migration=migration,
         population_config=population_config,
         populations=populations, stats=stats, **kwargs
         )
-    structure = {"names": tuple(list(stats) + prior_params.keys()),
+    structure = {"names": tuple(list(stats) + list(prior_params.keys())),
                  "formats": tuple(
                      np.repeat("f8", len(stats) + len(prior_params))
                      )}
@@ -566,10 +636,10 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
             num_cores = None
         pool = Pool(processes=num_cores)
         out = np.array(pool.map(simpartial, params))
-        out = np.core.records.fromarrays(out.T, dtype=structure)
+        out = np.core.records.fromrecords(out, dtype=structure)
     else:
         out = np.apply_along_axis(simpartial, 1, params)
-        out = np.core.records.fromarrays(out.T, dtype=structure)
+        out = np.core.records.fromrecords(out, dtype=structure)
     return out
 
 
@@ -587,16 +657,17 @@ def sim(params, migration, population_config, populations, stats, **kwargs):
             msprime.
         populations (np.ndarray): A nchrom np.ndarray indicating to which
             population each chromosome belongs.
+        stats (tuple): The requested statistics to be calculated.
         **kwargs (): Extra arguments for msprime.simulate(), Sample.pi(),
             and Sample.h().
     """
-    theta, sigma, tau, rho = params
+    sigma, theta, tau, rho = params
     tree = ms.simulate(
-                migration_matrix=migration,
-                population_configurations=population_config,
-                mutation_rate=theta / 4,
-                **kwargs
-            )
+        migration_matrix=migration,
+        population_configurations=population_config,
+        mutation_rate=theta / 4,
+        **kwargs
+        )
     treesample = MetaSample(tree, populations)
     # - 1 for calculated theta
     out = np.zeros((len(stats) + len(params) - 1, ))
@@ -644,23 +715,34 @@ def main():
     # # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
     # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
-                      # random_seed=3, num_cores=None))
+    # random_seed=3, num_cores=None))
     # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
-                      # random_seed=3, num_cores=4)["fst_mean"])
+    # random_seed=3, num_cores=4)["fst_mean"])
     npop = 5
     nchrom = 10
     population_config = [ms.PopulationConfiguration(10) for _ in range(npop)]
-    populations = np.repeat(npop, nchrom)
+    populations = np.repeat(np.arange(npop), nchrom)
+    print(populations)
     migration = np.full((npop, npop), 10 / (npop - 1))
-    for i in range(populations):
+    for i in range(npop):
         migration[i, i] = 0
-    test = sim(
+    test_target = sim(
         (1, 1, 1, 1),
         migration=migration,
         stats=("fst_mean", "fst_sd", "pi_h"),
         population_config=population_config,
         populations=populations
         )
+    test_simulation = ms_simulate(10, 5, 1, 10, 100, nrep=10, num_cores=None,
+                                  prior_seed=3)
+    print(test_simulation[0:9])
+    r_abc = Abc(
+        target=test_target[0:3],
+        param=test_simulation[["sigma", "tau", "rho"]],
+        sumstat=test_simulation[["fst_mean", "fst_sd", "pi_h"]]
+        )
+    print(r_abc.unadj_values)
+    
 
 
 if __name__ == "__main__":
