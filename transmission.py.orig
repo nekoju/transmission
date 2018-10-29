@@ -7,7 +7,10 @@ import numpy as np
 import msprime as ms
 from rpy2.rinterface import NULL
 import rpy2.robjects as robjects
+<<<<<<< HEAD
+=======
 import rpy2.robjects.numpy2ri as numpy2ri
+>>>>>>> 28f8055... finished assiginin attributes to Abc objects. Abc functionality should generally be present
 from rpy2.robjects.packages import importr
 import rpy2.robjects.vectors as vectors
 
@@ -34,11 +37,20 @@ class Abc(object):
         tol (float): Accepted proportion of sumstats accepted.
         method (str): The ABC algorithm to use. May take "loclinear",
             "neuralnet", "rejection", or "ridge" as values.
+<<<<<<< HEAD
+        transf (str): Transformation to use for parameter values. May take
+            "log", "logit", or None.
+        logit_bounds (np.ndarray): A num_param X 2 matrix of bounds bounds
+            to use if transf="logit" is specified. Each parameter being
+            estimated goes in its own row, with the lower and upper bounds as
+            elements.
+=======
         transf (str): A dictionary of parameter: transformation pairs to use
             for parameter values. Each may take "log", "logit", or None.
         logit_bounds (np.ndarray): A dictionary with elements "tau", "rho",
             and "sigma" each representing a tuple of lower and upper bounds
             for logit transformation to use if transf="logit" is specified.
+>>>>>>> 28f8055... finished assiginin attributes to Abc objects. Abc functionality should generally be present
         **kwargs: Additional arguments for r function 'abc'. Must be formatted
             for passing to R as described in the documentation for rpy2.
         """
@@ -148,96 +160,30 @@ class Abc(object):
             Args:
                 rec_array (np.ndarray): A n X m numpy structured array.
             """
-
-            if isinstance(rec_array, np.recarray):
-                # Extract data from record array, i.e. make into standard
-                # ndarray.
-                rec_array_in = (
-                    rec_array.view(np.float64)
-                    .reshape(
-                        (rec_array.shape + (-1,)
-                         if rec_array.shape
-                         else (1, -1))
-                        )
+            return robjects.r.matrix(
+                rec_array, nrow=rec_array.shape[0], ncol=rec_array.shape[1],
+                dimnames=robjects.r.list(
+                    NULL,
+                    vectors.StrVector(rec_array.dtype.names
+                                      if rec_array.dtype.names
+                                      else NULL)
                     )
-            else:
-                rec_array_in = rec_array
-            if rec_array.shape:
-                out = robjects.r.matrix(
-                    rec_array_in, nrow=rec_array.shape[0],
-                    ncol=(len(rec_array.dtype.names)
-                          if rec_array.dtype.names
-                          else rec_array.shape[1]),
-                    dimnames=robjects.r.list(
-                        NULL,
-                        (vectors.StrVector(rec_array.dtype.names)
-                         if rec_array.dtype.names
-                         else NULL)
-                        )
-                    )
-            else:
-                out = robjects.vectors.FloatVector(rec_array_in)
-                out.names = robjects.vectors.StrVector(
-                    rec_array.dtype.names
-                    )
-            return out
+                )
 
-        logit_bounds_matrix = (np.array([logit_bounds[x]
-                                         for x in param.dtype.names])
-                               .view(type=np.ndarray)
-                               .reshape((len(logit_bounds), -1)
-                                        )
-                               )
-        # Change transformation from None to "none" for R.
-        for key, value in transf.items():
-            if not value:
-                transf[key] = "none"
-        transf_list = [transf[x] for x in ["sigma", "tau", "rho"]]
-
-        numpy2ri.activate()
+        robjects.numpy2ri.activate()
         importr("abc")
-        importr("base")
         r_abc = robjects.r.abc(
             target=target,
             param=rmatrix(param),
             sumstat=rmatrix(sumstat),
-            tol=vectors.FloatVector([tol]),
-            method=vectors.StrVector([method]),
-            transf=("none" if not transf
-                    else vectors.StrVector(transf_list)),
-            logit_bounds=rmatrix(logit_bounds_matrix),
+            tol=vectors.FloatVector(tol)[0],
+            method=vectors.StrVector(method)[0],
+            transf=NULL if not transf else vectors.StrVector(transf)[0],
+            logit_bounds=logit_bounds,
             **kwargs
             )
 
-        if method != "rejection":
-            self.adj_vaulues = np.array(r_abc.rx2("adj.values"))
-            self.weights = np.array(r_abc.rx2("weights"))
-            self.residuals = np.array(r_abc.rx2("residuals"))
-        if method == "neuralnet":
-            self.lambda_0 = np.array(r_abc.rx2("lambda"))
-        if r_abc.rx2("na.action") != NULL:
-            self.na_action = robjects.vectors.BoolVector(
-                r_abc.rx2("na.action")
-                )
-        if not r_abc.rx2("region") != NULL:
-            self.region = robjects.vectors.BoolVector(r_abc.rx2("region"))
-        self.unadj_values = np.array(r_abc.rx2("unadj.values"))
-        self.ss = np.array(r_abc.rx2("ss"))
-        self.dist = np.array(r_abc.rx2("dist"))
-        self.call = r_abc.rx2("call")
-        self.transf = np.array(r_abc.rx2("transf"))
-        self.logit_bounds = np.array(r_abc.rx2("logit.bounds"))
-        self.method = r_abc.rx2("method")
-        self.kernel = r_abc.rx2("kernel")
-        self.numparam = np.array(r_abc.rx2("num.param"))
-        self.numstat = np.array(r_abc.rx2("numstat"))
-        self.aic = np.array(r_abc.rx2("aic"))
-        self.bic = np.array(r_abc.rx2("bic"))
-        self.names = {"paramater_names": r_abc.rx("names")
-                      .rx2("parameter.names"),
-                      "statistics_names": r_abc.rx("names")
-                      .rx2("statistics.names")}
-
+>>>>>>> (garbage_commit): working on Abc.__init__()
 
 class Sample(object):
     """
@@ -635,7 +581,11 @@ def beta_nonst(alpha, beta, a=0, b=1, n=1):
 
 def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
                 stats=("fst_mean", "fst_sd", "pi_h"),
+<<<<<<< HEAD
+                prior_params={"sigma": 1., "tau": (1, 1), "rho": (1, 1)},
+=======
                 prior_params={"sigma": (0, 1), "tau": (1, 1), "rho": (1, 1)},
+>>>>>>> 28f8055... finished assiginin attributes to Abc objects. Abc functionality should generally be present
                 nsamp_populations=None, nrep=1, num_cores="auto",
                 prior_seed=None, **kwargs):
     """
@@ -813,6 +763,19 @@ def main():
     # # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
     # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
+<<<<<<< HEAD
+                      # random_seed=3, num_cores=None))
+    # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
+                      # random_seed=3, num_cores=4)["fst_mean"])
+    npop = 5
+    nchrom = 10
+    population_config = [ms.PopulationConfiguration(10) for _ in range(npop)]
+    populations = np.repeat(npop, nchrom)
+    migration = np.full((npop, npop), 10 / (npop - 1))
+    for i in range(populations):
+        migration[i, i] = 0
+    test = sim(
+=======
     # random_seed=3, num_cores=None))
     # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
     # random_seed=3, num_cores=4)["fst_mean"])
@@ -825,12 +788,15 @@ def main():
     for i in range(npop):
         migration[i, i] = 0
     test_target = sim(
+>>>>>>> 28f8055... finished assiginin attributes to Abc objects. Abc functionality should generally be present
         (1, 1, 1, 1),
         migration=migration,
         stats=("fst_mean", "fst_sd", "pi_h"),
         population_config=population_config,
         populations=populations
         )
+<<<<<<< HEAD
+=======
     test_simulation = ms_simulate(10, 5, 1, 10, 100, nrep=10, num_cores=None,
                                   prior_seed=3)
     print(test_simulation[0:9])
@@ -840,6 +806,7 @@ def main():
         sumstat=test_simulation[["fst_mean", "fst_sd", "pi_h"]]
         )
     print(r_abc.unadj_values)
+>>>>>>> 28f8055... finished assiginin attributes to Abc objects. Abc functionality should generally be present
 
 
 if __name__ == "__main__":
