@@ -632,7 +632,7 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
                      n=num_simulations)
     rho = beta_nonst(prior_params["rho"][0], prior_params["rho"][1], a=0, b=2,
                      n=num_simulations)
-    theta = host_theta * sigma * np.true_divide(
+    theta = host_theta * np.true_divide(
         rho * sigma,
         tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
         )
@@ -642,10 +642,11 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
         population_config=population_config,
         populations=populations, stats=stats, **kwargs
         )
-    structure = {"names": tuple(list(stats) + list(prior_params.keys())),
+    structure = {"names": stats + tuple(prior_params.keys()),
                  "formats": tuple(
                      np.repeat("f8", len(stats) + len(prior_params))
-                     )}
+                     )
+                 }
     if num_cores:
         if num_cores == "auto":
             num_cores = None
