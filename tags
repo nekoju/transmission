@@ -1,0 +1,36 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+Abc	transmission.py	/^class Abc(object):$/;"	c
+MetaSample	transmission.py	/^class MetaSample(Sample):$/;"	c
+Sample	transmission.py	/^class Sample(object):$/;"	c
+__init__	transmission.py	/^    def __init__(self, popdata):$/;"	m	class:Sample
+__init__	transmission.py	/^    def __init__(self, popdata, populations, force_meta=False):$/;"	m	class:MetaSample
+__init__	transmission.py	/^    def __init__(self, target, param, sumstat, tol=0.1, method="loclinear",$/;"	m	class:Abc
+__str__	transmission.py	/^    def __str__(self):$/;"	m	class:Sample	file:
+author	setup.py	/^        author='Mark Juers',$/;"	v
+author_email	setup.py	/^        author_email='mpjuers@indiana.edu',$/;"	v
+beta_nonst	transmission.py	/^def beta_nonst(alpha, beta, a=0, b=1, n=1):$/;"	f
+description	setup.py	/^        description=('tools for inferring symbiont transmission mode from host'$/;"	v
+fst	transmission.py	/^    def fst(self, fst_method="gst",$/;"	m	class:MetaSample
+gtmatrix	transmission.py	/^    def gtmatrix(self):$/;"	m	class:Sample
+h	transmission.py	/^    def h(self, replace=False, average=False, bias=True,$/;"	m	class:Sample
+install_requires	setup.py	/^        install_requires=[$/;"	v
+license	setup.py	/^        license='MIT',$/;"	v
+main	transmission.py	/^def main():$/;"	f
+ms_simulate	transmission.py	/^def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,$/;"	f
+name	setup.py	/^        name='transmission',$/;"	v
+num_mutants	transmission.py	/^    def num_mutants(self, populations, popdata=None):$/;"	m	class:Sample
+packages	setup.py	/^        packages=['transmission'],$/;"	v
+pi	transmission.py	/^    def pi(self, pi_method="nei", *args, **kwargs):$/;"	m	class:Sample
+polymorphic	transmission.py	/^    def polymorphic(self, threshold=0, output=("num", "which")):$/;"	m	class:Sample
+rmatrix	transmission.py	/^        def rmatrix(rec_array):$/;"	f	function:Abc.__init__
+segsites	transmission.py	/^    def segsites(self):$/;"	m	class:Sample
+sim	transmission.py	/^def sim(params, migration, population_config, populations, stats, **kwargs):$/;"	f
+summary	transmission.py	/^    def summary(self):$/;"	m	class:Abc
+url	setup.py	/^        url='http:\/\/github.com\/mpjuers\/transmission',$/;"	v
+version	setup.py	/^        version='0.1',$/;"	v
+zip_safe	setup.py	/^        zip_safe=False$/;"	v

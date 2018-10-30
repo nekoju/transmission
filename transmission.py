@@ -28,10 +28,11 @@ class Abc(object):
         param (np.ndarray): num_iterations x 2 array of tau, rho values
             simulated from their prior distributions. If a structured array is
             provided, column names will be returned.
-        sumstat(np.ndarray): num_iterations x num_statistics array of summary
+        sumstat(np.ndarray): num_iterations x num_simulations array of summary
             statistics from simulated data. If a structured array is provided,
             column names will be returned.
         tol (float): Accepted proportion of sumstats accepted.
+            tol * sumstat.shape[0] must be >= 2
         method (str): The ABC algorithm to use. May take "loclinear",
             "neuralnet", "rejection", or "ridge" as values. "loclinear" is
             chosen as the default as rejection does not allow transformation
@@ -45,48 +46,8 @@ class Abc(object):
             for passing to R as described in the documentation for rpy2.
         """
 
-        def rmatrix(rec_array):
-            """
-            Return an r matrix, preserving column and row names, from a
-            numpy record array.
-
-            Args:
-                rec_array (np.ndarray): A n X m numpy structured array.
-            """
-
-            if isinstance(rec_array, np.recarray):
-                # Extract data from record array, i.e. make into standard
-                # ndarray.
-                rec_array_in = (
-                    rec_array.view(np.float64)
-                    .reshape(
-                        (rec_array.shape + (-1,)
-                         if rec_array.shape
-                         else (1, -1))
-                        )
-                    )
-            else:
-                rec_array_in = rec_array
-            if rec_array.shape:
-                out = robjects.r.matrix(
-                    rec_array_in, nrow=rec_array.shape[0],
-                    ncol=(len(rec_array.dtype.names)
-                          if rec_array.dtype.names
-                          else rec_array.shape[1]),
-                    dimnames=robjects.r.list(
-                        NULL,
-                        (vectors.StrVector(rec_array.dtype.names)
-                         if rec_array.dtype.names
-                         else NULL)
-                        )
-                    )
-            else:
-                out = robjects.vectors.FloatVector(rec_array_in)
-                out.names = robjects.vectors.StrVector(
-                    rec_array.dtype.names
-                    )
-            return out
-
+        if tol * sumstat.shape[0] <= 1:
+            raise ValueError("tol * sumstat.shape[0] must be >= 2")
         logit_bounds_matrix = (np.array([logit_bounds[x]
                                          for x in param.dtype.names])
                                .view(type=np.ndarray)
@@ -104,13 +65,13 @@ class Abc(object):
         importr("base")
         self.abc = robjects.r.abc(
             target=target,
-            param=rmatrix(param),
-            sumstat=rmatrix(sumstat),
+            param=Abc.rmatrix(param),
+            sumstat=Abc.rmatrix(sumstat),
             tol=vectors.FloatVector([tol]),
             method=vectors.StrVector([method]),
-            transf=("none" if not transf
+            transf=(vectors.StrVector(["none"]) if not transf
                     else vectors.StrVector(transf_list)),
-            logit_bounds=rmatrix(logit_bounds_matrix),
+            logit_bounds=Abc.rmatrix(logit_bounds_matrix),
             **kwargs
             )
         if method != "rejection":
@@ -151,6 +112,49 @@ class Abc(object):
 
     def summary(self):
         return robjects.r.summary(self.abc, print=False)
+
+    @staticmethod
+    def rmatrix(rec_array):
+        """
+        Return an r matrix, preserving column and row names, from a
+            numpy record array.
+
+        Args:
+            rec_array (np.ndarray): A n X m numpy structured array.
+        """
+
+        if isinstance(rec_array, np.recarray):
+            # Extract data from record array, i.e. make into standard
+            # ndarray.
+            rec_array_in = (
+                rec_array.view(np.float64)
+                .reshape(
+                    (rec_array.shape + (-1,)
+                     if rec_array.shape
+                     else (1, -1))
+                    )
+                )
+        else:
+            rec_array_in = rec_array
+        if rec_array.shape:
+            out = robjects.r.matrix(
+                rec_array_in, nrow=rec_array.shape[0],
+                ncol=(len(rec_array.dtype.names)
+                      if rec_array.dtype.names
+                      else rec_array.shape[1]),
+                dimnames=robjects.r.list(
+                    NULL,
+                    (vectors.StrVector(rec_array.dtype.names)
+                     if rec_array.dtype.names
+                     else NULL)
+                    )
+                )
+        else:
+            out = robjects.vectors.FloatVector(rec_array_in)
+            out.names = robjects.vectors.StrVector(
+                rec_array.dtype.names
+                )
+        return out
 
 
 class Sample(object):
@@ -674,9 +678,10 @@ def sim(params, migration, population_config, populations, stats, **kwargs):
     """
     theta, sigma, tau, rho = params
     tree = ms.simulate(
+        Ne=0.5,
         migration_matrix=migration,
         population_configurations=population_config,
-        mutation_rate=theta / 4,
+        mutation_rate=theta / 2,
         **kwargs
         )
     treesample = MetaSample(tree, populations)
@@ -730,25 +735,28 @@ def main():
     # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
     # random_seed=3, num_cores=4)["fst_mean"])
     npop = 5
-    nchrom = 10
-    population_config = [ms.PopulationConfiguration(10) for _ in range(npop)]
+    nchrom = 24
+    M = 10
+    population_config = [ms.PopulationConfiguration(nchrom)
+                         for _ in range(npop)]
     populations = np.repeat(np.arange(npop), nchrom)
-    migration = np.full((npop, npop), 10 / (npop - 1))
+    migration = np.full((npop, npop), M / (npop - 1))
     for i in range(npop):
         migration[i, i] = 0
     test_target = sim(
         (1, 1, 1, 1),
-        migration=migration,
+        migration=migration / 2,
         stats=("fst_mean", "fst_sd", "pi_h"),
         population_config=population_config,
-        populations=populations
+        populations=populations, random_seed=3
         )
-    test_simulation = ms_simulate(10, 5, 1, 10, 10000, nrep=10,
-                                  prior_params={"sigma": (0, 1),
-                                                "tau": (1, 1),
-                                                "rho": (1, 1)},
-                                  num_cores="auto",
-                                  prior_seed=3)
+    test_simulation = ms_simulate(
+        nchrom=10, num_populations=5, host_theta=1,
+        M=10, num_simulations=100, nrep=10,
+        prior_params={"sigma": (0, 1), "tau": (1, 1), "rho": (1, 1)},
+        num_cores=None,
+        prior_seed=3, random_seed=3
+        )
     r_abc = Abc(
         target=test_target[0:3],
         param=test_simulation[["sigma", "tau", "rho"]],
