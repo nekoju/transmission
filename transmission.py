@@ -17,7 +17,7 @@ class Abc(object):
     Interface to R package abc for estimating tau and rho posteriors.
     """
 
-    def __init__(self, target, param, sumstat, tol=0.1, method="rejection",
+    def __init__(self, target, param, sumstat, tol=0.1, method="loclinear",
                  transf={"tau": "logit", "rho": "logit", "sigma": None},
                  logit_bounds={"tau": (0, 1), "rho": (0, 2), "sigma": (1, 1)},
                  **kwargs):
@@ -33,7 +33,9 @@ class Abc(object):
             column names will be returned.
         tol (float): Accepted proportion of sumstats accepted.
         method (str): The ABC algorithm to use. May take "loclinear",
-            "neuralnet", "rejection", or "ridge" as values.
+            "neuralnet", "rejection", or "ridge" as values. "loclinear" is
+            chosen as the default as rejection does not allow transformation
+            of parameters.
         transf (str): A dictionary of parameter: transformation pairs to use
             for parameter values. Each may take "log", "logit", or None.
         logit_bounds (np.ndarray): A dictionary with elements "tau", "rho",
@@ -42,6 +44,7 @@ class Abc(object):
         **kwargs: Additional arguments for r function 'abc'. Must be formatted
             for passing to R as described in the documentation for rpy2.
         """
+
         def rmatrix(rec_array):
             """
             Return an r matrix, preserving column and row names, from a
@@ -94,12 +97,12 @@ class Abc(object):
         for key, value in transf.items():
             if not value:
                 transf[key] = "none"
-        transf_list = [transf[x] for x in ["sigma", "tau", "rho"]]
+        transf_list = [transf[x] for x in param.dtype.names]
 
         numpy2ri.activate()
         importr("abc")
         importr("base")
-        r_abc = robjects.r.abc(
+        self.abc = robjects.r.abc(
             target=target,
             param=rmatrix(param),
             sumstat=rmatrix(sumstat),
@@ -110,35 +113,44 @@ class Abc(object):
             logit_bounds=rmatrix(logit_bounds_matrix),
             **kwargs
             )
-
         if method != "rejection":
-            self.adj_vaulues = np.array(r_abc.rx2("adj.values"))
-            self.weights = np.array(r_abc.rx2("weights"))
-            self.residuals = np.array(r_abc.rx2("residuals"))
-        if method == "neuralnet":
-            self.lambda_0 = np.array(r_abc.rx2("lambda"))
-        if r_abc.rx2("na.action") != NULL:
-            self.na_action = robjects.vectors.BoolVector(
-                r_abc.rx2("na.action")
+            self.adj_values = np.core.records.fromarrays(
+                np.array(self.abc.rx2("adj.values")).T, names=param.dtype.names
                 )
-        if not r_abc.rx2("region") != NULL:
-            self.region = robjects.vectors.BoolVector(r_abc.rx2("region"))
-        self.unadj_values = np.array(r_abc.rx2("unadj.values"))
-        self.ss = np.array(r_abc.rx2("ss"))
-        self.dist = np.array(r_abc.rx2("dist"))
-        self.call = r_abc.rx2("call")
-        self.transf = np.array(r_abc.rx2("transf"))
-        self.logit_bounds = np.array(r_abc.rx2("logit.bounds"))
-        self.method = r_abc.rx2("method")
-        self.kernel = r_abc.rx2("kernel")
-        self.numparam = np.array(r_abc.rx2("num.param"))
-        self.numstat = np.array(r_abc.rx2("numstat"))
-        self.aic = np.array(r_abc.rx2("aic"))
-        self.bic = np.array(r_abc.rx2("bic"))
-        self.names = {"paramater_names": r_abc.rx("names")
+            self.weights = np.array(self.abc.rx2("weights"))
+            self.residuals = np.array(self.abc.rx2("residuals"))
+        if method == "neuralnet":
+            self.lambda_0 = np.array(self.abc.rx2("lambda"))
+        if self.abc.rx2("na.action") != NULL:
+            self.na_action = robjects.vectors.BoolVector(
+                self.abc.rx2("na.action")
+                )
+        if not self.abc.rx2("region") != NULL:
+            self.region = robjects.vectors.BoolVector(self.abc.rx2("region"))
+        self.unadj_values = np.core.records.fromarrays(
+            np.array(self.abc.rx2("unadj.values")).T, names=param.dtype.names
+            )
+        self.ss = np.core.records.fromarrays(
+            np.array(self.abc.rx2("ss")).T, names=sumstat.dtype.names
+            )
+        self.dist = np.array(self.abc.rx2("dist"))
+        self.call = self.abc.rx2("call")
+        self.transf = np.array(self.abc.rx2("transf"))
+        self.logit_bounds = np.array(self.abc.rx2("logit.bounds"))
+        self.method = self.abc.rx2("method")
+        self.kernel = self.abc.rx2("kernel")
+        self.numparam = np.array(self.abc.rx2("numparam"))
+        self.numstat = np.array(self.abc.rx2("numstat"))
+        self.aic = np.array(self.abc.rx2("aic"))
+        self.bic = np.array(self.abc.rx2("bic"))
+        self.names = {"paramater_names": self.abc.rx("names")
                       .rx2("parameter.names"),
-                      "statistics_names": r_abc.rx("names")
+                      "statistics_names": self.abc.rx("names")
                       .rx2("statistics.names")}
+        numpy2ri.deactivate()
+
+    def summary(self):
+        return robjects.r.summary(self.abc, print=False)
 
 
 class Sample(object):
@@ -636,10 +648,10 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
             num_cores = None
         pool = Pool(processes=num_cores)
         out = np.array(pool.map(simpartial, params))
-        out = np.core.records.fromrecords(out, dtype=structure)
+        out = np.core.records.fromarrays(out.T, dtype=structure)
     else:
         out = np.apply_along_axis(simpartial, 1, params)
-        out = np.core.records.fromrecords(out, dtype=structure)
+        out = np.core.records.fromarrays(out.T, dtype=structure)
     return out
 
 
@@ -742,6 +754,8 @@ def main():
         sumstat=test_simulation[["fst_mean", "fst_sd", "pi_h"]]
         )
     print(r_abc.unadj_values)
+    print(r_abc.unadj_values["sigma"])
+    print(r_abc.summary())
 
 
 if __name__ == "__main__":
