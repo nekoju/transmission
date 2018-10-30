@@ -613,8 +613,8 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     if prior_seed:
         np.random.seed(prior_seed)
     if isinstance(prior_params["sigma"], float):
-        sigma = np.full((num_simulations, ), prior_params["sigma"])
-    else:
+        sigma = np.exp(np.full((num_simulations, ), prior_params["sigma"]))
+    elif isinstance(prior_params["sigma"], tuple):
         sigma = np.exp(
             np.random.normal(
                 prior_params["sigma"][0],
@@ -622,18 +622,17 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
                 num_simulations
                 )
             )
+    else:
+        raise Exception("sigma must be tuple or float")
     tau = beta_nonst(prior_params["tau"][0], prior_params["tau"][1],
                      n=num_simulations)
     rho = beta_nonst(prior_params["rho"][0], prior_params["rho"][1], a=0, b=2,
                      n=num_simulations)
-    sigma = np.random.normal(prior_params["sigma"][0],
-                             prior_params["sigma"][1],
-                             num_simulations)
     theta = host_theta * sigma * np.true_divide(
         rho * sigma,
         tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
         )
-    params = np.array([rho, tau, theta, sigma]).T
+    params = np.array([theta, sigma, tau, rho]).T
     simpartial = functools.partial(
         sim, migration=migration,
         population_config=population_config,
@@ -673,7 +672,7 @@ def sim(params, migration, population_config, populations, stats, **kwargs):
         **kwargs (): Extra arguments for msprime.simulate(), Sample.pi(),
             and Sample.h().
     """
-    sigma, theta, tau, rho = params
+    theta, sigma, tau, rho = params
     tree = ms.simulate(
         migration_matrix=migration,
         population_configurations=population_config,
@@ -734,7 +733,6 @@ def main():
     nchrom = 10
     population_config = [ms.PopulationConfiguration(10) for _ in range(npop)]
     populations = np.repeat(np.arange(npop), nchrom)
-    print(populations)
     migration = np.full((npop, npop), 10 / (npop - 1))
     for i in range(npop):
         migration[i, i] = 0
@@ -745,16 +743,17 @@ def main():
         population_config=population_config,
         populations=populations
         )
-    test_simulation = ms_simulate(10, 5, 1, 10, 100, nrep=10, num_cores=None,
+    test_simulation = ms_simulate(10, 5, 1, 10, 10000, nrep=10,
+                                  prior_params={"sigma": (0, 1),
+                                                "tau": (1, 1),
+                                                "rho": (1, 1)},
+                                  num_cores="auto",
                                   prior_seed=3)
-    print(test_simulation[0:9])
     r_abc = Abc(
         target=test_target[0:3],
         param=test_simulation[["sigma", "tau", "rho"]],
         sumstat=test_simulation[["fst_mean", "fst_sd", "pi_h"]]
         )
-    print(r_abc.unadj_values)
-    print(r_abc.unadj_values["sigma"])
     print(r_abc.summary())
 
 
