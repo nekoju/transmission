@@ -1,4 +1,3 @@
-from __future__ import print_function, division
 import collections.abc as collections
 import functools
 from multiprocessing import Pool
@@ -51,7 +50,7 @@ class Abc(object):
         logit_bounds_matrix = (np.array([logit_bounds[x]
                                          for x in param.dtype.names])
                                .view(type=np.ndarray)
-                               .reshape((len(logit_bounds), -1)
+                               .reshape((len(param.dtype.names), -1)
                                         )
                                )
         # Change transformation from None to "none" for R.
@@ -155,6 +154,21 @@ class Abc(object):
                 rec_array.dtype.names
                 )
         return out
+
+    @staticmethod
+    def scale(x, center=True, scale=True)
+    """
+    Center and scale data, intended to mimic functionality of r function scale.
+
+    Args:
+        x (np.ndarray): A n X p array of observations and parameters.
+        center (bool, float, or np.ndarray): If True, centers about variable
+            mean. If float, centers by this value. If a 1D np.ndarray is
+            specified, center.shape[0] should match x.shape[1] to subtract
+            a provided variable from each column.
+        scale (bool or function): If True, scales by standard deviation.
+            Alternatively, another function or lambda can be specified.
+    """
 
 
 class Sample(object):
@@ -617,14 +631,12 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     if prior_seed:
         np.random.seed(prior_seed)
     if isinstance(prior_params["sigma"], float):
-        sigma = np.exp(np.full((num_simulations, ), prior_params["sigma"]))
+        sigma = np.full((num_simulations, ), prior_params["sigma"])
     elif isinstance(prior_params["sigma"], tuple):
-        sigma = np.exp(
-            np.random.normal(
-                prior_params["sigma"][0],
-                prior_params["sigma"][1],
-                num_simulations
-                )
+        sigma = np.random.normal(
+            prior_params["sigma"][0],
+            prior_params["sigma"][1],
+            num_simulations
             )
     else:
         raise Exception("sigma must be tuple or float")
@@ -633,7 +645,7 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     rho = beta_nonst(prior_params["rho"][0], prior_params["rho"][1], a=0, b=2,
                      n=num_simulations)
     theta = host_theta * np.true_divide(
-        rho * sigma,
+        rho * np.exp(sigma),
         tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
         )
     params = np.array([theta, sigma, tau, rho]).T
@@ -741,11 +753,11 @@ def main():
     population_config = [ms.PopulationConfiguration(nchrom)
                          for _ in range(npop)]
     populations = np.repeat(np.arange(npop), nchrom)
-    migration = np.full((npop, npop), M / (npop - 1))
+    migration = np.full((npop, npop), M / (2 * (npop - 1)))
     for i in range(npop):
         migration[i, i] = 0
     test_target = sim(
-        (1, 1, 1, 1),
+        (2, 1, 1, 1),
         migration=migration / 2,
         stats=("fst_mean", "fst_sd", "pi_h"),
         population_config=population_config,
@@ -754,15 +766,16 @@ def main():
     test_simulation = ms_simulate(
         nchrom=10, num_populations=5, host_theta=1,
         M=10, num_simulations=100, nrep=10,
-        prior_params={"sigma": (0, 1), "tau": (1, 1), "rho": (1, 1)},
+        prior_params={"sigma": 0., "tau": (1, 1), "rho": (1, 1)},
         num_cores=None,
         prior_seed=3, random_seed=3
         )
     r_abc = Abc(
         target=test_target[0:3],
-        param=test_simulation[["sigma", "tau", "rho"]],
+        param=test_simulation[["tau", "rho"]],
         sumstat=test_simulation[["fst_mean", "fst_sd", "pi_h"]]
         )
+    print(test_simulation[0:9])
     print(r_abc.summary())
 
 
