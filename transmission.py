@@ -194,7 +194,7 @@ class Sample(object):
     def __init__(self, popdata):
         """
         Args:
-            popdata (np.ndarray OR msprime.TreeSequence): A 2 x 2 np.ndarray
+            popdata (np.ndarray OR msprime.TreeSequence): A 2D np.ndarray
                 with individual chromosomes
                 represented by rows and snp positions represented by columns.
                 Alternatively, an object of class "TreeSequence" can be
@@ -469,13 +469,41 @@ class Sample(object):
 
 class MetaSample(Sample):
     """
+
     Class representing a metapopulation sample and associated methods.
+
     Input argument should be a nchrom X segsites np.ndarray with an
     array listing to which population each chromosome belongs,
     or an msprime.TreeSequence object.
+
+    Attributes:
+        npop (int): The number of populations in the sample.
+        pop_sample_sizes (np.ndarray): The number of individuals sampled from
+            each population.
+        populations (np.ndarray): A 1-dimensional np.ndarray of ints
+            specifying to which population each sample belongs.
+
     """
 
     def __init__(self, popdata, populations, force_meta=False):
+        """
+        Args:
+            popdata (np.ndarray OR msprime.TreeSequence): A 2D np.ndarray
+                with individual chromosomes
+                represented by rows and snp positions represented by columns.
+                Alternatively, an object of class "TreeSequence" can be
+                provided and the relevant attributes will be inferred.
+                Note that this it the transpose of
+                msprime.TreeSequence.genotype_matrix(). This accomodates
+                generators output by msprime.simulate() num_replicates
+                argument and accepts such an iterable  while returning
+                a tuple of "TreeSequence" or "np.ndarray"
+                objects.
+            populations (np.ndarray): A 1D np.ndarray of ints specifying to
+                which population each sample belongs.
+            force_meta (bool): Whether to force a single population to become
+                a metapopulation rather than coercion to Population class.
+        """
         super(MetaSample, self).__init__(popdata)
         if (len(set(populations)) == 1
                 or (self.type == "TreeSequence"
