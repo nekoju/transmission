@@ -8,7 +8,7 @@ setup(
         url='http://github.com/mpjuers/transmission',
         author='Mark Juers',
         author_email='mpjuers@indiana.edu',
-        license='MIT',
+        license='GPL>=3',
         packages=['transmission'],
         install_requires=[
             'msprime',
