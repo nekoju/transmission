@@ -18,7 +18,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import collections
+import collections.abc as collections
 import functools
 from multiprocessing import Pool
 
@@ -365,55 +365,60 @@ class Sample(object):
                     namely 'bias' and 'replace'.
         """
 
-        if pi_method is "nei":
-            # Hash rows of genotype matrix to reduce time comparing.
-            hashes = np.apply_along_axis(
-                lambda row: hash(tuple(row)), 1, self.gtmatrix()
-                )
-            seqs = dict.fromkeys(set(hashes))
-            # Loop over seqs keys to calculate sequence frequncies
-            # as well as create dict items for sequences themselves.
-            for seqid in seqs:
-                seqs[seqid] = {}
-                seqid_array = np.full(self.nchrom, seqid)
-                # Get frequencies.
-                if self.nchrom == 0:
-                    seqs[seqid]["p"] = 0.0
-                else:
-                    seqs[seqid]["p"] = (np.count_nonzero(
-                        seqid_array == hashes) /
-                                        self.nchrom)
-                # Associate sequences with hashes.
-                for i in np.arange(self.nchrom):
-                    if seqid == hash(tuple(self.gtmatrix()[i, ])):
-                        seqs[seqid]["seq"] = np.array(self.gtmatrix()[i, ])
-                        break
-            # Calculate nucleotide diversity.
-            nucdiv = 0
-            for i in seqs:
-                for j in seqs:
-                    if i != j:
-                        nucdiv += (seqs[i]['p'] * seqs[j]['p'] *
-                                   np.count_nonzero(
-                                       seqs[i]["seq"] != seqs[j]["seq"]
+        out = np.zeros((len(self.popdata), ))
+        for repidx, rep in enumerate(self.popdata):
+            if pi_method == "nei":
+                # Hash rows of genotype matrix to reduce time comparing.
+                hashes = np.apply_along_axis(
+                    lambda row: hash(tuple(row)), 1, self.gtmatrix()
+                    )
+                seqs = dict.fromkeys(set(hashes))
+                # Loop over seqs keys to calculate sequence frequncies
+                # as well as create dict items for sequences themselves.
+                for seqid in seqs:
+                    seqs[seqid] = {}
+                    seqid_array = np.full(self.nchrom, seqid)
+                    # Get frequencies.
+                    if self.nchrom == 0:
+                        seqs[seqid]["p"] = 0.0
+                    else:
+                        seqs[seqid]["p"] = (np.count_nonzero(
+                            seqid_array == hashes) /
+                                            self.nchrom)
+                    # Associate sequences with hashes.
+                    for i in np.arange(self.nchrom):
+                        if seqid == hash(tuple(self.gtmatrix()[i, ])):
+                            seqs[seqid]["seq"] = np.array(self.gtmatrix()[i, ])
+                            break
+                # Calculate nucleotide diversity.
+                nucdiv = 0
+                for i in seqs:
+                    for j in seqs:
+                        if i != j:
+                            nucdiv += (seqs[i]['p'] * seqs[j]['p'] *
+                                       np.count_nonzero(
+                                           seqs[i]["seq"] != seqs[j]["seq"]
+                                           )
                                        )
-                                   )
-            return nucdiv
-        elif pi_method is "tajima":
-            k = 0
-            # count number of pairwise differences for all unique comparisons.
-            gtmatrix = self.gtmatrix()
-            for i in np.arange(self.nchrom - 1):
-                for j in np.arange(i, self.nchrom):
-                    k += np.count_nonzero(
-                        gtmatrix[i, ] != gtmatrix[j, ]
-                        )
-            # Formula: \sum{k_ij} / (nchrom choose 2)
-            return k / ((self.nchrom - 1) * self.nchrom / 2)
-        elif pi_method is "h":
-            return np.sum(self.h(**kwargs))
-        else:
-            print("Unsupported method, {}".format(pi_method))
+                out[repidx] = nucdiv
+            elif pi_method == "tajima":
+                k = 0
+                # count number of pairwise differences for unique comparisons.
+                gtmatrix = self.gtmatrix()
+                for i in np.arange(self.nchrom - 1):
+                    for j in np.arange(i, self.nchrom):
+                        k += np.count_nonzero(
+                            gtmatrix[i, ] != gtmatrix[j, ]
+                            )
+                # Formula: \sum{k_ij} / (nchrom choose 2)
+                out[repidx] = k / ((self.nchrom - 1) * self.nchrom / 2)
+            elif pi_method == "h":
+                break
+            else:
+                raise NameError("Unsupported method, {}".format(pi_method))
+        if pi_method == "h":
+            out[repidx] = np.sum(self.h(**kwargs))
+        return out if out.size > 1 else out[0]
 
     def polymorphic(self, threshold=0, output=("num", "which")):
         """
@@ -514,24 +519,22 @@ class MetaSample(Sample):
             summary = (summary, )
         if fst_method == "gst":
             ind = np.where(self.segsites() != 0)[0]
-            h_by_site = tuple([self.h(by_population=True, **kwargs)[i]
-                               for i in ind])
+            h_by_site = tuple(self.h(by_population=True, **kwargs)[i]
+                              for i in ind)
             hs = tuple(
-                [np.average(
+                np.average(
                     x, axis=0, weights=self.pop_sample_sizes[0])
-                 for x in h_by_site]
+                for x in h_by_site
                 )
             ht = tuple(
-                [x[0] for x in tuple([self.h(**kwargs)[i]
-                                      for i in ind])]
+                x[0] for x in tuple([self.h(**kwargs)[i]
+                                     for i in ind])
                 )
-            fst = tuple([(1 - np.true_divide(x, y))
-                         for x, y
-                         in zip(hs, ht)])
+            fst = tuple((1 - np.true_divide(x, y))
+                        for x, y
+                        in zip(hs, ht))
             if average_sites:
                 stats = []
-                if type(summary) == str:
-                    summary = tuple(summary)
                 if "mean" in summary:
                     if self.segsites().any():
                         stats.append([np.average(x) for x in fst])
@@ -574,8 +577,8 @@ def beta_nonst(alpha, beta, a=0, b=1, n=1):
 def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
                 stats=("fst_mean", "fst_sd", "pi_h"),
                 prior_params={"sigma": (0, 1), "tau": (1, 1), "rho": (1, 1)},
-                nsamp_populations=None, nrep=1, num_cores="auto",
-                prior_seed=None, **kwargs):
+                nsamp_populations=None, num_replicates=1, num_cores="auto",
+                prior_seed=None, average_final=True, **kwargs):
     """
     Generate random sample summary using msprime for the specified prior
     distributions of tau (vertical transmission rate) and rho (sex ratio).
@@ -583,9 +586,9 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     From a supplied array of prior (hyper)parameters, ms_simulate generates a
     num_simulations-tall array of parameters with which to estimate the
     posterior distributions of tau and rho using abc methods. It then draws
-    nrep coalescent samples for each parameter combination and outputs a
-    summary table consisting of mean fst, fst standard deviation, pi, and the
-    original simulated parameter values for each metasimulation.
+    num_replicates coalescent samples for each parameter combination and
+    outputs a summary table consisting of mean fst, fst standard deviation, pi,
+    and the original simulated parameter values for each metasimulation.
 
     Args:
         nchrom (int): The number of chromosomes to sample from each population
@@ -608,8 +611,8 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
             DNA mutation rate in Drosophila melanogaster. PLOS Biology.
             Sproufske et al. 2018. High mutation rates limit evolutionary
             adaptation in Escherichia coli. PLOS Genetics.
-        nrep (int): Number of msprime replicates to run for each simulated
-            parameter pair and the number of simulations in each
+        num_replicates (int): Number of msprime replicates to run for each
+            simulated parameter pair and the number of simulations in each
             metasimulation.
         num_cores (int or str): The number of cores to use for computation.
             "auto" will automatically detect using multiprocessing.cpu_count().
@@ -620,6 +623,8 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
             Setting a seed will allow repeatability of results.
         **kwargs (): Extra arguments for ms.simulate(), Sample.pi(), and
             Sample.fst().
+        average_final (bool): Whether to average replicates. False will return
+            raw simulations.
     """
 
     # Number of output statistics plus parameters tau and rho.
@@ -657,7 +662,7 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     params = np.array([theta, sigma, tau, rho]).T
     simpartial = functools.partial(
         sim, migration=migration,
-        population_config=population_config,
+        population_config=population_config, num_replicates=num_replicates,
         populations=populations, stats=stats, **kwargs
         )
     structure = {"names": stats + tuple(prior_params.keys()),
@@ -677,7 +682,8 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     return out
 
 
-def sim(params, migration, population_config, populations, stats, **kwargs):
+def sim(params, migration, population_config, populations, stats,
+        num_replicates, average_final=True, **kwargs):
     """
     Runs actual simulation with ms. Intended as helper for ms_simulate().
 
@@ -694,6 +700,11 @@ def sim(params, migration, population_config, populations, stats, **kwargs):
         stats (tuple): The requested statistics to be calculated.
         **kwargs (): Extra arguments for msprime.simulate(), Sample.pi(),
             and Sample.h().
+        average_final (bool): Whether to return averaged replicates. False will
+            return raw summaries.
+        num_replicates (int): Number of msprime replicates to run for each
+            simulated parameter pair and the number of simulations in each
+            metasimulation.
     """
     theta, sigma, tau, rho = params
     tree = ms.simulate(
@@ -705,25 +716,38 @@ def sim(params, migration, population_config, populations, stats, **kwargs):
         )
     treesample = MetaSample(tree, populations)
     # - 1 for calculated theta
-    out = np.zeros((len(stats) + len(params) - 1, ))
+    out = (np.zeros((num_replicates, len(stats) + len(params) - 1))
+           if not average_final
+           else np.zeros((1, len(stats) + len(params) - 1)))
+    if len(set(("fst_mean", "fst_sd")).intersection(set(stats))) > 0:
+        fst_summ = treesample.fst(average_sites=True,
+                                  average_final=average_final,
+                                  summary=("mean", "sd"), **kwargs)
     for i, stat in enumerate(stats):
-        if len(set(("fst_mean", "fst_sd")).intersection(set(stats))) > 0:
-            fst_summ = treesample.fst(average_sites=True, average_final=True,
-                                      summary=("mean", "sd"), **kwargs)
         if stat == "pi_h":
-            out[i] = treesample.pi(method="h", **kwargs)
+            out[:, i] = (treesample.pi(pi_method="h", **kwargs)
+                         if not average_final
+                         else np.mean(treesample.pi(pi_method="h", **kwargs)))
         elif stat == "pi_nei":
-            out[i] = treesample.pi(method="nei", **kwargs)
+            out[:, i] = (treesample.pi(pi_method="nei", **kwargs)
+                         if not average_final
+                         else np.mean(
+                             treesample.pi(pi_method="nei", **kwargs))
+                         )
         elif stat == "pi_tajima":
-            out[i] = treesample.pi(method="tajima", **kwargs)
+            out[:, i] = (treesample.pi(pi_method="tajima", **kwargs)
+                         if not average_final
+                         else np.mean(
+                             treesample.pi(pi_method="tajima", **kwargs)
+                             ))
         elif stat == "fst_mean":
-            out[i] = fst_summ["mean"]
+            out[:, i] = fst_summ["mean"]
         elif stat == "fst_sd":
-            out[i] = fst_summ["sd"]
-    out[-3] = sigma
-    out[-2] = tau
-    out[-1] = rho
-    return out
+            out[:, i] = fst_summ["sd"]
+    out[:, -3] = sigma
+    out[:, -2] = tau
+    out[:, -1] = rho
+    return out if not average_final else out[0]
 
 
 def main():
@@ -749,12 +773,14 @@ def main():
     #     ))
     # # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
-    # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
+    # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None,
+    # num_replicates=2,
     # random_seed=3, num_cores=None))
-    # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None, nrep=2,
+    # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None,
+    # num_replicates=2,
     # random_seed=3, num_cores=4)["fst_mean"])
     npop = 5
-    nchrom = 24
+    nchrom = 10
     M = 10
     population_config = [ms.PopulationConfiguration(nchrom)
                          for _ in range(npop)]
@@ -767,14 +793,14 @@ def main():
         migration=migration / 2,
         stats=("fst_mean", "fst_sd", "pi_h"),
         population_config=population_config,
-        populations=populations, random_seed=3
+        populations=populations, random_seed=3, num_replicates=10
         )
     test_simulation = ms_simulate(
         nchrom=10, num_populations=5, host_theta=1,
-        M=10, num_simulations=100, nrep=10,
+        M=10, num_simulations=100, num_replicates=10,
         prior_params={"sigma": (0, 1), "tau": (1, 1), "rho": (1, 1)},
         num_cores=None,
-        prior_seed=3, random_seed=3
+        prior_seed=3, random_seed=3, average_final=True
         )
     r_abc = Abc(
         target=test_target[0:3],
