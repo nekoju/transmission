@@ -1,6 +1,24 @@
-import collections.abc as collections
-import functools
-from multiprocessing import Pool
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# transmission: A tool for inferring endosymbiont biology from metagenome data.
+# Copyright (C) 4-11-2018 Mark Juers
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+import collections
 
 import numpy as np
 import msprime as ms
@@ -12,6 +30,7 @@ import rpy2.robjects.vectors as vectors
 
 
 class Abc(object):
+
     """
     Interface to R package abc for estimating tau and rho posteriors.
     """
@@ -154,21 +173,6 @@ class Abc(object):
                 rec_array.dtype.names
                 )
         return out
-
-    @staticmethod
-    def scale(x, center=True, scale=True)
-    """
-    Center and scale data, intended to mimic functionality of r function scale.
-
-    Args:
-        x (np.ndarray): A n X p array of observations and parameters.
-        center (bool, float, or np.ndarray): If True, centers about variable
-            mean. If float, centers by this value. If a 1D np.ndarray is
-            specified, center.shape[0] should match x.shape[1] to subtract
-            a provided variable from each column.
-        scale (bool or function): If True, scales by standard deviation.
-            Alternatively, another function or lambda can be specified.
-    """
 
 
 class Sample(object):
@@ -766,13 +770,13 @@ def main():
     test_simulation = ms_simulate(
         nchrom=10, num_populations=5, host_theta=1,
         M=10, num_simulations=100, nrep=10,
-        prior_params={"sigma": 0., "tau": (1, 1), "rho": (1, 1)},
+        prior_params={"sigma": (0, 1), "tau": (1, 1), "rho": (1, 1)},
         num_cores=None,
         prior_seed=3, random_seed=3
         )
     r_abc = Abc(
         target=test_target[0:3],
-        param=test_simulation[["tau", "rho"]],
+        param=test_simulation[["sigma", "tau", "rho"]],
         sumstat=test_simulation[["fst_mean", "fst_sd", "pi_h"]]
         )
     print(test_simulation[0:9])
