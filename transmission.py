@@ -19,6 +19,8 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import collections
+import functools
+from multiprocessing import Pool
 
 import numpy as np
 import msprime as ms
