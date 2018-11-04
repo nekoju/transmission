@@ -645,7 +645,7 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     rho = beta_nonst(prior_params["rho"][0], prior_params["rho"][1], a=0, b=2,
                      n=num_simulations)
     theta = host_theta * np.true_divide(
-        rho * np.exp(sigma),
+        rho * 10 ** sigma,
         tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
         )
     params = np.array([theta, sigma, tau, rho]).T
