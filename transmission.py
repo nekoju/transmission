@@ -178,6 +178,7 @@ class Abc(object):
 
 
 class Sample(object):
+
     """
     Coalescent simulation output representing a population class and methods.
     Input argument should be a np.ndarray with 2 dimensions detailed
@@ -189,6 +190,7 @@ class Sample(object):
         gtmatrix: the original matrix supplied, consisting of [0, 1]
         type: the input type, either "TreeSequence" or "ndarray"
         popdata: the original object passed to instantiate the class
+
     """
 
     def __init__(self, popdata):
@@ -468,6 +470,7 @@ class Sample(object):
 
 
 class MetaSample(Sample):
+
     """
 
     Class representing a metapopulation sample and associated methods.
