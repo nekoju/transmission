@@ -413,11 +413,11 @@ class Sample(object):
                 # Formula: \sum{k_ij} / (nchrom choose 2)
                 out[repidx] = k / ((self.nchrom - 1) * self.nchrom / 2)
             elif pi_method == "h":
-                break
+                pass
             else:
                 raise NameError("Unsupported method, {}".format(pi_method))
         if pi_method == "h":
-            out[repidx] = np.sum(self.h(**kwargs))
+            out = np.array([np.sum(x) for x in self.h(**kwargs)])
         return out if out.size > 1 else out[0]
 
     def polymorphic(self, threshold=0, output=("num", "which")):
@@ -698,17 +698,18 @@ def sim(params, migration, population_config, populations, stats,
         populations (np.ndarray): A nchrom np.ndarray indicating to which
             population each chromosome belongs.
         stats (tuple): The requested statistics to be calculated.
-        **kwargs (): Extra arguments for msprime.simulate(), Sample.pi(),
-            and Sample.h().
         average_final (bool): Whether to return averaged replicates. False will
             return raw summaries.
         num_replicates (int): Number of msprime replicates to run for each
             simulated parameter pair and the number of simulations in each
             metasimulation.
+        **kwargs (): Extra arguments for msprime.simulate(), Sample.pi(),
+            and Sample.h().
     """
     theta, sigma, tau, rho = params
     tree = ms.simulate(
         Ne=0.5,
+        num_replicates=num_replicates,
         migration_matrix=migration,
         population_configurations=population_config,
         mutation_rate=theta / 2,
@@ -790,10 +791,19 @@ def main():
         migration[i, i] = 0
     test_target = sim(
         (2, 1, 1, 1),
-        migration=migration / 2,
+        migration=migration,
         stats=("fst_mean", "fst_sd", "pi_h"),
         population_config=population_config,
-        populations=populations, random_seed=3, num_replicates=10
+        populations=populations, num_replicates=10,
+        average_final=True
+        )
+    test_target2 = sim(
+        (2, 1, 1, 1),
+        migration=migration,
+        stats=("fst_mean", "fst_sd", "pi_h"),
+        population_config=population_config,
+        populations=populations, random_seed=3,
+        num_replicates=10, average_final=False
         )
     test_simulation = ms_simulate(
         nchrom=10, num_populations=5, host_theta=1,
@@ -807,8 +817,9 @@ def main():
         param=test_simulation[["sigma", "tau", "rho"]],
         sumstat=test_simulation[["fst_mean", "fst_sd", "pi_h"]]
         )
-    print(test_simulation[0:9])
     print(r_abc.summary())
+    # print(test_simulation[0:9])
+    # print(r_abc.summary())
 
 
 if __name__ == "__main__":
