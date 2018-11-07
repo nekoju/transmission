@@ -249,7 +249,7 @@ class Sample(object):
         return out if len(out) > 1 else out[0]
 
     def h(self, replace=False, average=False, bias=True,
-          by_population=False, **kwargs):
+          by_population=False):
         """
         Calculate heterozygosity over sites in sample.
         Returns a list of np.ndarrays of dimensions npop X segsites,
@@ -260,6 +260,7 @@ class Sample(object):
             bias (bool): whether to apply bias-correction to calculations
             by_population (bool): whether to calculate heterozygosity by
                 population, or alternatively, as a metapopulation (H_T).
+            h_opts (dict): Extra arguments for self.h().
         """
 
         # Check if multiple populations are provided or desired
@@ -348,7 +349,7 @@ class Sample(object):
         else:
             return out[0]
 
-    def pi(self, pi_method="nei", *args, **kwargs):
+    def pi(self, pi_method="nei", h_opts={}, **kwargs):
         """
         Calculates different metrics of nucleotide diversity.
 
@@ -365,6 +366,8 @@ class Sample(object):
                 h: Simply the sum of heterozygosities across all sites.
                     Takes arguments to self.h() as optional arguments,
                     namely 'bias' and 'replace'.
+            h_opts (dict): Extra arguments for self.h() in the form of a
+                kwargs dictionary.
         """
 
         out = np.zeros((len(self.popdata), ))
@@ -419,7 +422,7 @@ class Sample(object):
             else:
                 raise NameError("Unsupported method, {}".format(pi_method))
         if pi_method == "h":
-            out = np.array([np.sum(x) for x in self.h(**kwargs)])
+            out = np.array([np.sum(x) for x in self.h(**h_opts)])
         return out if out.size > 1 else out[0]
 
     def polymorphic(self, threshold=0, output=("num", "which")):
@@ -528,7 +531,7 @@ class MetaSample(Sample):
 
     def fst(self, fst_method="gst",
             summary="mean", average_final=False, average_sites=True,
-            **kwargs):
+            h_opts={}):
         """
         Returns specified fst statistic.
         Args:
@@ -544,13 +547,14 @@ class MetaSample(Sample):
             average_final (bool): Whether to average final fst values. If true,
                 returns 1 fst value, otherwise 1 value for each replicate in an
                 array. Redundant if not average_sites.
-            **kwargs (): Optional arguments for self.h().
+            h_opts (dict): Extra arguments for Sample.h(), in the form of a
+                kwargs dictionary.
         """
         if isinstance(summary, str):
             summary = (summary, )
         if fst_method == "gst":
             ind = np.where(self.segsites() != 0)[0]
-            h_by_site = tuple(self.h(by_population=True, **kwargs)[i]
+            h_by_site = tuple(self.h(by_population=True, **h_opts)[i]
                               for i in ind)
             hs = tuple(
                 np.average(
@@ -558,7 +562,7 @@ class MetaSample(Sample):
                 for x in h_by_site
                 )
             ht = tuple(
-                x[0] for x in tuple([self.h(**kwargs)[i]
+                x[0] for x in tuple([self.h(**h_opts)[i]
                                      for i in ind])
                 )
             fst = tuple((1 - np.true_divide(x, y))
@@ -609,12 +613,12 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
                 stats=("fst_mean", "fst_sd", "pi_h"),
                 prior_params={"sigma": (0, 1), "tau": (1, 1), "rho": (1, 1)},
                 nsamp_populations=None, num_replicates=1, num_cores="auto",
-                prior_seed=None, average_final=True, **kwargs):
+                prior_seed=None, average_final=True, h_opts={}, **kwargs):
     """
     Generate random sample summary using msprime for the specified prior
     distributions of tau (vertical transmission rate) and rho (sex ratio).
 
-    From a supplied array of prior (hyper)parameters, ms_simulate generates a
+    From a supplied dict of prior (hyper)parameters, ms_simulate generates a
     num_simulations-tall array of parameters with which to estimate the
     posterior distributions of tau and rho using abc methods. It then draws
     num_replicates coalescent samples for each parameter combination and
@@ -645,6 +649,8 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
         num_replicates (int): Number of msprime replicates to run for each
             simulated parameter pair and the number of simulations in each
             metasimulation.
+        average_final (bool): Whether to average replicates. False will return
+            raw simulations.
         num_cores (int or str): The number of cores to use for computation.
             "auto" will automatically detect using multiprocessing.cpu_count().
             None will use a single thread not routed through
@@ -652,10 +658,10 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
             An int value will specify the number of threads to use.
         prior_seed (int): The seed used to draw samples for tau and rho.
             Setting a seed will allow repeatability of results.
+        h_opts (dict): Extra options for Sample.h() in the form of a kwargs
+            dictionary.
         **kwargs (): Extra arguments for ms.simulate(), Sample.pi(), and
             Sample.fst().
-        average_final (bool): Whether to average replicates. False will return
-            raw simulations.
     """
 
     # Number of output statistics plus parameters tau and rho.
@@ -694,7 +700,8 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     simpartial = functools.partial(
         sim, migration=migration,
         population_config=population_config, num_replicates=num_replicates,
-        populations=populations, average_final=True, stats=stats, **kwargs
+        populations=populations, average_final=True, stats=stats,
+        h_opts=h_opts, **kwargs
         )
     structure = {"names": stats + tuple(prior_params.keys()),
                  "formats": tuple(
@@ -714,7 +721,7 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
 
 
 def sim(params, migration, population_config, populations, stats,
-        num_replicates, average_final=True, **kwargs):
+        num_replicates, average_final=True, h_opts={}, **kwargs):
     """
     Runs actual simulation with ms. Intended as helper for ms_simulate().
 
@@ -734,8 +741,9 @@ def sim(params, migration, population_config, populations, stats,
         num_replicates (int): Number of msprime replicates to run for each
             simulated parameter pair and the number of simulations in each
             metasimulation.
-        **kwargs (): Extra arguments for msprime.simulate(), Sample.pi(),
-            and Sample.h().
+        h_opts (dict): Extra arguments for Sample.h(), formatted as kwargs
+            dictionary.
+        **kwargs (): Extra arguments for msprime.simulate().
     """
     theta, sigma, tau, rho = params
     tree = ms.simulate(
@@ -754,12 +762,13 @@ def sim(params, migration, population_config, populations, stats,
     if len(set(("fst_mean", "fst_sd")).intersection(set(stats))) > 0:
         fst_summ = treesample.fst(average_sites=True,
                                   average_final=average_final,
-                                  summary=("mean", "sd"), **kwargs)
+                                  summary=("mean", "sd"), h_opts=h_opts)
     for i, stat in enumerate(stats):
         if stat == "pi_h":
-            out[:, i] = (treesample.pi(pi_method="h", **kwargs)
+            out[:, i] = (treesample.pi(pi_method="h", h_opts=h_opts, **kwargs)
                          if not average_final
-                         else np.mean(treesample.pi(pi_method="h", **kwargs)))
+                         else np.mean(treesample.pi(pi_method="h",
+                                                    h_opts=h_opts, **kwargs)))
         elif stat == "pi_nei":
             out[:, i] = (treesample.pi(pi_method="nei", **kwargs)
                          if not average_final
@@ -841,7 +850,8 @@ def main():
         M=10, num_simulations=100, num_replicates=10,
         prior_params={"sigma": (0, 1), "tau": (1, 1), "rho": (1, 1)},
         num_cores=None,
-        prior_seed=3, random_seed=3, average_final=True
+        prior_seed=3, average_final=True,
+        h_opts={"bias": True, "replace": True}, random_seed=3
         )
     r_abc = Abc(
         target=test_target[0:3],
