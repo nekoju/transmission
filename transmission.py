@@ -248,7 +248,7 @@ class Sample(object):
         return out if len(out) > 1 else out[0]
 
     def h(self, replace=False, average=False, bias=True,
-          by_population=False):
+          by_population=False, **h_opts):
         """
         Calculate heterozygosity over sites in sample.
         Returns a list of np.ndarrays of dimensions npop X segsites,
@@ -561,8 +561,8 @@ class MetaSample(Sample):
                 for x in h_by_site
                 )
             ht = tuple(
-                x[0] for x in tuple(self.h(**h_opts)[i]
-                                    for i in ind)
+                x[0] for x in tuple([self.h(**h_opts)[i]
+                                     for i in ind])
                 )
             fst = tuple((1 - np.true_divide(x, y))
                         for x, y
