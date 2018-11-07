@@ -663,7 +663,7 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     simpartial = functools.partial(
         sim, migration=migration,
         population_config=population_config, num_replicates=num_replicates,
-        populations=populations, stats=stats, **kwargs
+        populations=populations, average_final=True, stats=stats, **kwargs
         )
     structure = {"names": stats + tuple(prior_params.keys()),
                  "formats": tuple(
