@@ -300,9 +300,9 @@ class Sample(object):
                 else:
                     out.append(harray)
             elif by_population:
-                out.append(np.full(self.npop, float("nan")))
+                out.append(np.full(self.npop, 0.))
             else:
-                out.append(np.full(1, float('nan')))
+                out.append(np.full(1, 0.))
         if not average:
             return tuple(out)
         elif not by_population:
@@ -562,8 +562,8 @@ class MetaSample(Sample):
                 for x in h_by_site
                 )
             ht = tuple(
-                x[0] for x in tuple([self.h(**h_opts)[i]
-                                     for i in ind])
+                x[0] for x in tuple(self.h(**h_opts)[i]
+                                    for i in ind)
                 )
             fst = tuple((1 - np.true_divide(x, y))
                         for x, y
@@ -667,8 +667,8 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     # Number of output statistics plus parameters tau and rho.
 
     populations = np.repeat(np.arange(num_populations), nchrom)
-    population_config = tuple([ms.PopulationConfiguration(nchrom)
-                               for _ in np.arange(num_populations)])
+    population_config = tuple(ms.PopulationConfiguration(nchrom)
+                              for _ in np.arange(num_populations))
     nsamp_populations = (num_populations
                          if not nsamp_populations
                          else nsamp_populations)
