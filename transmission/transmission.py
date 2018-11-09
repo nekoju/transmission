@@ -335,7 +335,7 @@ class Sample(object):
         else:
             return out[0]
 
-    def pi(self, pi_method="nei", h_opts={}, **kwargs):
+    def pi(self, pi_method="h", h_opts={}, **kwargs):
         """
         Calculates different metrics of nucleotide diversity.
 
