@@ -248,14 +248,13 @@ class Sample(object):
                 out.append(rep)
         return out if len(out) > 1 else out[0]
 
-    def h(self, replace=False, average=False, bias=True,
+    def h(self, average=False, bias=True,
           by_population=False):
         """
         Calculate heterozygosity over sites in sample.
         Returns a list of np.ndarrays of dimensions npop X segsites,
         or, if average==True, a npop X num_replicates np.ndarray.
         Args:
-            replace (bool): calculate heterozygosity with replacement or not
             average (bool): whether to average H values for all sites
             bias (bool): whether to apply bias-correction to calculations
             by_population (bool): whether to calculate heterozygosity by
@@ -276,21 +275,8 @@ class Sample(object):
                 sample_sizes = (self.pop_sample_sizes
                                 if by_population
                                 else np.array([self.nchrom]))
-                if replace:
-                    parray = np.true_divide(num_mutants, sample_sizes.T)
-                    harray = 2 * parray * (1 - parray)
-                # heterozygosity should probably be calculated without
-                # replacement especially with small samples
-                else:
-                    harray = (
-                        2 * np.true_divide(
-                            num_mutants, sample_sizes.T
-                            ) *
-                        np.true_divide(
-                            (sample_sizes.T - num_mutants),
-                            (sample_sizes - 1).T
-                            )
-                        )
+                parray = np.true_divide(num_mutants, sample_sizes.T)
+                harray = 2 * parray * (1 - parray)
                 if bias:
                     harray = (np.true_divide(
                         sample_sizes, (sample_sizes - 1)
@@ -365,7 +351,7 @@ class Sample(object):
                     originally in Tajima's D.
                 h: Simply the sum of heterozygosities across all sites.
                     Takes arguments to self.h() as optional arguments,
-                    namely 'bias' and 'replace'.
+                    namely 'bias'.
             h_opts (dict): Extra arguments for self.h() in the form of a
                 kwargs dictionary.
         """
@@ -851,7 +837,7 @@ def main():
         prior_params={"sigma": (0, 1), "tau": (1, 1), "rho": (1, 1)},
         num_cores=None,
         prior_seed=3, average_final=True,
-        h_opts={"bias": True, "replace": True}, random_seed=3
+        h_opts={"bias": True}, random_seed=3
         )
     r_abc = Abc(
         target=test_target[0:3],

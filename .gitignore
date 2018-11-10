@@ -1,7 +1,7 @@
 *seedms
-*/.python-version
-*/transmission.pyc
-*.ipynb
-*.RData
+**/.python-version.pyc
+**.ipynb
+**.RData
 tags
-*.orig
+**.orig
+**/__pycache__*
