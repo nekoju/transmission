@@ -458,6 +458,48 @@ class Sample(object):
                 out[repidx] = replicate.shape[1]
         return out
 
+    def theta_w(self, by_population=False, populations=None, threshold=1):
+        # Check if multiple populations are provided or desired
+        populations = (self.populations
+                       if by_population
+                       else np.zeros(self.nchrom, dtype=int))
+        # populations for portability to MetaSample
+        popset = set(populations)
+        if len(popset) == 1:
+            return self.segsites / np.sum(
+                1 / np.arange(self.nchrom)
+                )
+        elif self.type == "ndarray":
+            out = np.zeros((self.npop, ))
+            for popidx, pop in enumerate(popset):
+                popmask = populations == pop
+                nchrom_pop = np.count_nonzero(pop == populations[popidx])
+                snps = np.apply_along_axis(
+                    lambda x: np.all(np.bincount(x) > threshold),
+                    0, self.popdata
+                    )
+                num_polymorphic = np.count_nonzero(snps)
+            out[popidx] = num_polymorphic / np.sum(
+                1 / np.arange(nchrom_pop[popidx] - 1)
+                )
+            return out
+        else:
+            snps = np.zeros((self.npop, self.segsites))
+            for siteidx, site in enumerate(self.popdata.variants()):
+                for popidx, pop in enumerate(popset):
+                    popmask = populations == pop
+                if np.all(
+                        np.bincount(site.genotypes[popmask])
+                        > threshold
+                        ):
+                    snps[popidx, siteidx] = 1
+            num_snps = np.apply_along_axis(np.count_nonzero, 1, snps)
+            nchrom_pop = np.bincount(populations)
+            harmonic_nums = np.array(
+                [np.sum(1 / np.arange(x)) for x in nchrom_pop]
+                )
+            return num_snps / harmonic_nums
+
 
 class MetaSample(Sample):
 
