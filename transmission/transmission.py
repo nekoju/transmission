@@ -622,16 +622,15 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
         num_simulations (int): The number of tau-rho pairs of parameters
             to draw from their priors, and hence the number of metasimulations
             to include in the output.
+        stats (tuple): The statistics to be returned by the simulation.
+            May take values "fst_mean" for mean locus Fst, "fst_sd" for locus
+            standard deviation, or "pi_h", "pi_nei", or "pi_tajima". See
+            Sample.pi() documentation for details.
         prior_params (dict): A dict containing tuples specifiying the prior
             distribution parameters for sigma, tau, and rho. That is, the
             mutation rate multiplier, vertical transmission frequency, and
             sex ratio. Optionally one may provide a scalar value for sigma to
             fix the mutation rate multiplier.
-            Default mutation rate multiplier estimate from values found in:
-            Haag-Liautard et al. 2008. Direct Estimation of the mitochondrial
-            DNA mutation rate in Drosophila melanogaster. PLOS Biology.
-            Sproufske et al. 2018. High mutation rates limit evolutionary
-            adaptation in Escherichia coli. PLOS Genetics.
         num_replicates (int): Number of msprime replicates to run for each
             simulated parameter pair and the number of simulations in each
             metasimulation.
