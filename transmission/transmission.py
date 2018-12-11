@@ -595,9 +595,9 @@ def beta_nonst(alpha, beta, a=0, b=1, n=1):
     return np.random.beta(alpha, beta, n) * (b - a) + a
 
 
-def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
+def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
                 stats=("fst_mean", "fst_sd", "pi_h"),
-                prior_params={"sigma": (0, 1), "tau": (1, 1), "rho": (1, 1)},
+                prior_params={"sigma": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
                 nsamp_populations=None, num_replicates=1, num_cores="auto",
                 prior_seed=None, average_final=True, h_opts={}, **kwargs):
     """
@@ -617,8 +617,8 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
             migration matrix.
         host_theta (float): The host's haploid theta (2 * Ne * mu * L)
             estimated from mitochondrial or nuclear data.
-        M (float): The symmetric migration parameter (2 * Ne * m), estimated
-            from host mitochondrial or nuclear fst.
+        host_Nm (float): The symmetric migration parameter (2 * Ne * m),
+            estimated from host mitochondrial or nuclear fst.
         num_simulations (int): The number of tau-rho pairs of parameters
             to draw from their priors, and hence the number of metasimulations
             to include in the output.
@@ -650,7 +650,7 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
             Sample.fst().
     """
 
-    # Number of output statistics plus parameters tau and rho.
+    # Number of output statistics plus parameters sigma, tau, and rho.
 
     populations = np.repeat(np.arange(num_populations), nchrom)
     population_config = tuple(ms.PopulationConfiguration(nchrom)
@@ -658,10 +658,6 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     nsamp_populations = (num_populations
                          if not nsamp_populations
                          else nsamp_populations)
-    migration = np.full((num_populations, num_populations),
-                        np.true_divide(M, ((num_populations - 1) * 4)))
-    for i in np.arange(num_populations):
-        migration[i, i] = 0
     if prior_seed:
         np.random.seed(prior_seed)
     if isinstance(prior_params["sigma"], float):
@@ -678,13 +674,10 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
                      n=num_simulations)
     rho = beta_nonst(prior_params["rho"][0], prior_params["rho"][1], a=0, b=2,
                      n=num_simulations)
-    theta = host_theta * np.true_divide(
-        rho * 10 ** sigma,
-        tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
-        )
-    params = np.array([theta, sigma, tau, rho]).T
+    params = np.array([sigma, tau, rho]).T
     simpartial = functools.partial(
-        sim, migration=migration,
+        sim,
+        host_theta=host_theta, host_Nm=host_Nm,
         population_config=population_config, num_replicates=num_replicates,
         populations=populations, average_final=True, stats=stats,
         h_opts=h_opts, **kwargs
@@ -706,7 +699,7 @@ def ms_simulate(nchrom, num_populations, host_theta, M, num_simulations,
     return out
 
 
-def sim(params, migration, population_config, populations, stats,
+def sim(params, host_theta, host_Nm, population_config, populations, stats,
         num_replicates, average_final=True, h_opts={}, **kwargs):
     """
     Runs actual simulation with ms. Intended as helper for ms_simulate().
@@ -714,10 +707,10 @@ def sim(params, migration, population_config, populations, stats,
     At top level for picklability (for multiprocessing).
 
     Args:
-        params (tuple): theta, sigma, tau, rho for simulation.
-        migration (np.ndarray): The migration matrix. Off-diagonals are
-            calculated as M / ((d - 1) * 4).
-        popoulation_config (list): List of population configurations for
+        params (tuple): symbiont_theta, sigma, tau, rho for simulation.
+        host_theta (float): Estimate of host theta (2*Ne*mu*L) for host.
+        host_Nm (float): Estimate of host migration parameter (Ne*m).
+        population_config (list): List of population configurations for
             msprime.
         populations (np.ndarray): A nchrom np.ndarray indicating to which
             population each chromosome belongs.
@@ -731,20 +724,33 @@ def sim(params, migration, population_config, populations, stats,
             dictionary.
         **kwargs (): Extra arguments for msprime.simulate().
     """
-    theta, sigma, tau, rho = params
+    sigma, tau, rho = params
+    num_populations = len(population_config)
+    symbiont_Nm = np.true_divide(host_Nm * rho,
+                                 tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho)
+    migration = np.full(
+        (num_populations, num_populations),
+        np.true_divide(
+            symbiont_Nm, ((num_populations - 1) * 4)
+            )
+        )
+    np.fill_diagonal(migration, 0)
+    symbiont_theta = host_theta * np.true_divide(
+        rho * 10 ** sigma,
+        tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
+        )
     tree = ms.simulate(
         Ne=0.5,
         num_replicates=num_replicates,
         migration_matrix=migration,
         population_configurations=population_config,
-        mutation_rate=theta / 2,
+        mutation_rate=symbiont_theta / 4,
         **kwargs
         )
     treesample = MetaSample(tree, populations)
-    # - 1 for calculated theta
-    out = (np.zeros((num_replicates, len(stats) + len(params) - 1))
+    out = (np.zeros((num_replicates, len(stats) + len(params)))
            if not average_final
-           else np.zeros((1, len(stats) + len(params) - 1)))
+           else np.zeros((1, len(stats) + len(params))))
     if len(set(("fst_mean", "fst_sd")).intersection(set(stats))) > 0:
         fst_summ = treesample.fst(average_sites=True,
                                   average_final=average_final,
@@ -806,38 +812,41 @@ def main():
     # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None,
     # num_replicates=2,
     # random_seed=3, num_cores=4)["fst_mean"])
+    host_theta = 1
     npop = 5
     nchrom = 10
-    M = 10
+    host_Nm = 2.6666
     population_config = [ms.PopulationConfiguration(nchrom)
                          for _ in range(npop)]
     populations = np.repeat(np.arange(npop), nchrom)
-    migration = np.full((npop, npop), M / (2 * (npop - 1)))
-    for i in range(npop):
-        migration[i, i] = 0
+    migration = np.full((npop, npop), host_Nm / (4 * (npop - 1)))
+    np.fill_diagonal(migration, 0)
     test_target = sim(
-        (2, 1, 1, 1),
-        migration=migration,
+        (0, 1, 1),
+        host_theta=host_theta, host_Nm=host_Nm,
         stats=("fst_mean", "fst_sd", "pi_h"),
         population_config=population_config,
         populations=populations, num_replicates=10,
+        random_seed=3,
         average_final=True
         )
-    test_target2 = sim(
-        (2, 1, 1, 1),
-        migration=migration,
-        stats=("fst_mean", "fst_sd", "pi_h"),
-        population_config=population_config,
-        populations=populations, random_seed=3,
-        num_replicates=10, average_final=False
-        )
+    # test_target2 = sim(
+    #     (1, 1, 1),
+    #     stats=("fst_mean", "fst_sd", "pi_h"),
+    #     population_config=population_config,
+    #     populations=populations, random_seed=3,
+    #     num_replicates=10, average_final=False
+    #     )
     test_simulation = ms_simulate(
-        nchrom=10, num_populations=5, host_theta=1,
-        M=10, num_simulations=100, num_replicates=10,
-        prior_params={"sigma": (0, 1), "tau": (1, 1), "rho": (1, 1)},
+        nchrom=10, num_populations=5,
+        host_theta=host_theta, host_Nm=host_Nm,
+        num_simulations=100, num_replicates=10,
+        prior_params={"sigma": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
         num_cores=None,
-        prior_seed=3, average_final=True,
-        h_opts={"bias": True}, random_seed=3
+        prior_seed=3,
+        average_final=True,
+        h_opts={"bias": True},
+        random_seed=3
         )
     r_abc = Abc(
         target=test_target[0:3],
