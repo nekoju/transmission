@@ -21,6 +21,7 @@
 import collections.abc as collections
 import functools
 from multiprocessing import Pool
+import sys
 
 import numpy as np
 import msprime as ms
@@ -730,7 +731,9 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
     migration = np.full(
         (num_populations, num_populations),
         np.true_divide(
-            symbiont_Nm, ((num_populations - 1) * 4)
+            # num_populations is multiplied by 2 to preserve the value of 2*Nm
+            # during the simulation as ms does.
+            symbiont_Nm, ((num_populations - 1) * 2)
             )
         )
     np.fill_diagonal(migration, 0)
@@ -739,11 +742,11 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
         tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
         )
     tree = ms.simulate(
-        Ne=0.5,
+        Ne=0.5,  # again, factor of 1/2 to preserve ms behavior
         num_replicates=num_replicates,
         migration_matrix=migration,
         population_configurations=population_config,
-        mutation_rate=symbiont_theta / 4,
+        mutation_rate=symbiont_theta / 2,  #  factor of 1/2 to preserve ms beh. 
         **kwargs
         )
     treesample = MetaSample(tree, populations)
@@ -801,51 +804,53 @@ def main():
     #     num_replicates=2,
     #     # reset to 3
     #     # 6 gives one popln with no snps and one with
-    #     random_seed=3
+    #     random_seed=random_seed
     #     ))
     # # a = (testsample.h(average=False, by_population=True))
     # b = testsample.h()
     # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None,
     # num_replicates=2,
-    # random_seed=3, num_cores=None))
+    # random_seed=random_seed, num_cores=None))
     # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None,
     # num_replicates=2,
-    # random_seed=3, num_cores=4)["fst_mean"])
+    # random_seed=random_seed, num_cores=4)["fst_mean"])
+    prior_seed = 3
+    random_seed = 3
     host_theta = 1
-    npop = 5
+    npop = 10
     nchrom = 10
     host_Nm = 2.6666
     population_config = [ms.PopulationConfiguration(nchrom)
                          for _ in range(npop)]
+
     populations = np.repeat(np.arange(npop), nchrom)
-    migration = np.full((npop, npop), host_Nm / (4 * (npop - 1)))
-    np.fill_diagonal(migration, 0)
     test_target = sim(
         (0, 1, 1),
         host_theta=host_theta, host_Nm=host_Nm,
         stats=("fst_mean", "fst_sd", "pi_h"),
         population_config=population_config,
-        populations=populations, num_replicates=10,
-        random_seed=3,
+        populations=populations, num_replicates=int(sys.argv[1]),
+        random_seed=random_seed,
         average_final=True
         )
     # test_target2 = sim(
     #     (1, 1, 1),
     #     stats=("fst_mean", "fst_sd", "pi_h"),
     #     population_config=population_config,
-    #     populations=populations, random_seed=3,
+    #     populations=populations, random_seed=random_seed,
     #     num_replicates=10, average_final=False
     #     )
+    
     test_simulation = ms_simulate(
         nchrom=10, num_populations=5,
         host_theta=host_theta, host_Nm=host_Nm,
         num_simulations=100, num_replicates=10,
         prior_params={"sigma": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
         num_cores=None,
-        prior_seed=3,
+        prior_seed=prior_seed,
         average_final=True,
         h_opts={"bias": True},
-        random_seed=3
+        random_seed=random_seed
         )
     r_abc = Abc(
         target=test_target[0:3],
