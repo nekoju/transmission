@@ -46,7 +46,7 @@ class Abc(object):
         target(np.ndarray): 0 x nstat array of calculated summary
             statistics from observed sample. If a structured array is provided,
             column names will be returned.
-        param (np.ndarray): num_iterations x 2 array of tau, rho values
+        param (np.ndarray): num_iterations x 3 array of sigma, tau, rho values
             simulated from their prior distributions. If a structured array is
             provided, column names will be returned.
         sumstat(np.ndarray): num_iterations x num_simulations array of summary
@@ -79,7 +79,10 @@ class Abc(object):
         for key, value in transf.items():
             if not value:
                 transf[key] = "none"
-        transf_list = [transf[x] for x in param.dtype.names]
+        if param.dtype.names:
+            transf_list = [transf[x] for x in param.dtype.names]
+        else:
+            raise AttributeError("No names for parameter array")
 
         numpy2ri.activate()
         importr("abc")
@@ -186,7 +189,6 @@ class Sample(object):
     in __init__ or an msprime.TreeSequence object.
 
     Attributes:
-        segsites: the number of segregating sites in the sample
         nchrom: the number of chromosomes sampled
         gtmatrix: the original matrix supplied, consisting of [0, 1]
         type: the input type, either "TreeSequence" or "ndarray"
@@ -456,50 +458,72 @@ class Sample(object):
                 out[repidx] = replicate.num_sites
             else:
                 out[repidx] = replicate.shape[1]
-        return out
+        return out[0] if out.size == 1 else out
 
     def theta_w(self, by_population=False, populations=None, threshold=1):
         # Check if multiple populations are provided or desired
         populations = (self.populations
                        if by_population
-                       else np.zeros(self.nchrom, dtype=int))
+                       else np.zeros((self.nchrom, ), dtype=int))
         # populations for portability to MetaSample
         popset = set(populations)
         if len(popset) == 1:
-            return self.segsites / np.sum(
-                1 / np.arange(self.nchrom)
+            # self.segsites() takes replicates into consideration
+            return self.segsites() / np.sum(
+                1 / np.arange(1, self.nchrom)
                 )
-        elif self.type == "ndarray":
-            out = np.zeros((self.npop, ))
-            for popidx, pop in enumerate(popset):
-                popmask = populations == pop
-                nchrom_pop = np.count_nonzero(pop == populations[popidx])
-                snps = np.apply_along_axis(
-                    lambda x: np.all(np.bincount(x) > threshold),
-                    0, self.popdata
-                    )
-                num_polymorphic = np.count_nonzero(snps)
-            out[popidx] = num_polymorphic / np.sum(
-                1 / np.arange(nchrom_pop[popidx] - 1)
-                )
-            return out
         else:
-            snps = np.zeros((self.npop, self.segsites))
-            for siteidx, site in enumerate(self.popdata.variants()):
-                for popidx, pop in enumerate(popset):
-                    popmask = populations == pop
-                if np.all(
-                        np.bincount(site.genotypes[popmask])
-                        > threshold
-                        ):
-                    snps[popidx, siteidx] = 1
-            num_snps = np.apply_along_axis(np.count_nonzero, 1, snps)
-            nchrom_pop = np.bincount(populations)
-            harmonic_nums = np.array(
-                [np.sum(1 / np.arange(x)) for x in nchrom_pop]
-                )
-            return num_snps / harmonic_nums
-
+            segsites = self.segsites()
+            snps_by_rep = []
+            if self.type == "ndarray":
+                out = np.zeros((self.npop, len(self.popdata)), dtype = float)
+            for repidx, rep in enumerate(self.popdata):
+                snp_array = np.zeros((self.npop, segsites[repidx]), dtype=int)
+                nchrom_pop = [np.count_nonzero(populations == x)
+                              for x in set(populations)]
+                if self.type == "ndarray":
+                    for popidx, pop in enumerate(popset):
+                        # Boolean mask for which chroms to select.
+                        popmask = populations == pop
+                        # SNPs have greater than 1 variant.
+                        snp_mask = np.apply_along_axis(
+                            lambda x: len(set(x)) > 1, 0,
+                            self.popdata[repidx][popmask]
+                            )
+                        # Check that threshold is met, e.g. no singletons.
+                        snp_array[popidx] = np.apply_along_axis(
+                            lambda x: np.all(np.bincount(x) > threshold),
+                            0, self.popdata[repidx][popmask, snp_mask]
+                            )
+                    num_polymorphic = np.count_nonzero(snp_array, 1)
+                    harmonic_numbers = np.sum(1 / np.arange(1, nchrom_pop))
+                    return num_polymorphic / harmonic_numbers
+                else:
+                    # self.segsites() returns per-replicate segsites
+                    snps_by_site = np.zeros((self.npop, segsites[repidx]),
+                                            dtype=int)
+                    is_snp_by_pop = np.zeros((self.npop, ), dtype=int)
+                    for siteidx, site in enumerate(self.popdata[repidx]
+                                                   .variants()):
+                        # num_segsite X self.npop nested list
+                        for popidx, pop in enumerate(popset):
+                            # self.npop-list
+                            popmask = populations == pop
+                            # if all alleles are represented more than
+                            # threshold times and there are > 2 alleles...
+                            if (len(set(site.genotypes[popmask])) > 1
+                                and np.all(np.bincount(site.genotypes[popmask])
+                                           >= threshold)):
+                                is_snp_by_pop[popidx] = 1
+                        snps_by_site.T[siteidx] = is_snp_by_pop
+                        is_snp_by_pop.fill(0)
+                    snps_by_rep.append(np.count_nonzero(snps_by_site, 1))
+                    snps_by_site.fill(0)
+                nchrom_pop = np.bincount(populations)
+                harmonic_numbers = np.array(
+                    [np.sum(1 / np.arange(1, x)) for x in nchrom_pop]
+                    ).reshape(-1, 1)
+                return snps_by_rep[0] / harmonic_numbers.T
 
 class MetaSample(Sample):
 
@@ -788,10 +812,12 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
         num_replicates=num_replicates,
         migration_matrix=migration,
         population_configurations=population_config,
-        mutation_rate=symbiont_theta / 2,  #  factor of 1/2 to preserve ms beh. 
+        mutation_rate=symbiont_theta / 2,  # factor of 1/2 to preserve ms beh.
         **kwargs
         )
     treesample = MetaSample(tree, populations)
+    testtree2 = MetaSample(treesample.gtmatrix(), populations)
+    testtree2.theta_w(True, populations)
     out = (np.zeros((num_replicates, len(stats) + len(params)))
            if not average_final
            else np.zeros((1, len(stats) + len(params))))
@@ -884,7 +910,7 @@ def main():
     #     )
     
     test_simulation = ms_simulate(
-        nchrom=10, num_populations=5,
+        nchrom=10, num_populations=10,
         host_theta=host_theta, host_Nm=host_Nm,
         num_simulations=100, num_replicates=10,
         prior_params={"sigma": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
