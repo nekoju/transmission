@@ -466,70 +466,19 @@ class Sample(object):
                 out[repidx] = replicate.shape[1]
         return out[0] if out.size == 1 else out
 
-    def theta_w(self, by_population=False, populations=None, threshold=1):
+    def theta_w(self, by_population=False, threshold=0):
         # Check if multiple populations are provided or desired
         populations = (self.populations
                        if by_population
                        else np.zeros((self.nchrom, ), dtype=int))
         # populations for portability to MetaSample
-        popset = set(populations)
-        if len(popset) == 1:
-            # self.segsites() takes replicates into consideration
-            return self.segsites() / np.sum(
-                1 / np.arange(1, self.nchrom)
-                )
-        else:
-            segsites = self.segsites()
-            snps_by_rep = []
-            if self.type == "ndarray":
-                out = np.zeros((self.npop, len(self.popdata)), dtype = float)
-            for repidx, rep in enumerate(self.popdata):
-                snp_array = np.zeros((self.npop, segsites[repidx]), dtype=int)
-                nchrom_pop = [np.count_nonzero(populations == x)
-                              for x in set(populations)]
-                if self.type == "ndarray":
-                    for popidx, pop in enumerate(popset):
-                        # Boolean mask for which chroms to select.
-                        popmask = populations == pop
-                        # SNPs have greater than 1 variant.
-                        snp_mask = np.apply_along_axis(
-                            lambda x: len(set(x)) > 1, 0,
-                            self.popdata[repidx][popmask]
-                            )
-                        # Check that threshold is met, e.g. no singletons.
-                        snp_array[popidx] = np.apply_along_axis(
-                            lambda x: np.all(np.bincount(x) > threshold),
-                            0, self.popdata[repidx][popmask, snp_mask]
-                            )
-                    num_polymorphic = np.count_nonzero(snp_array, 1)
-                    harmonic_numbers = np.sum(1 / np.arange(1, nchrom_pop))
-                    return num_polymorphic / harmonic_numbers
-                else:
-                    # self.segsites() returns per-replicate segsites
-                    snps_by_site = np.zeros((self.npop, segsites[repidx]),
-                                            dtype=int)
-                    is_snp_by_pop = np.zeros((self.npop, ), dtype=int)
-                    for siteidx, site in enumerate(self.popdata[repidx]
-                                                   .variants()):
-                        # num_segsite X self.npop nested list
-                        for popidx, pop in enumerate(popset):
-                            # self.npop-list
-                            popmask = populations == pop
-                            # if all alleles are represented more than
-                            # threshold times and there are > 2 alleles...
-                            if (len(set(site.genotypes[popmask])) > 1
-                                and np.all(np.bincount(site.genotypes[popmask])
-                                           >= threshold)):
-                                is_snp_by_pop[popidx] = 1
-                        snps_by_site.T[siteidx] = is_snp_by_pop
-                        is_snp_by_pop.fill(0)
-                    snps_by_rep.append(np.count_nonzero(snps_by_site, 1))
-                    snps_by_site.fill(0)
-                nchrom_pop = np.bincount(populations)
-                harmonic_numbers = np.array(
-                    [np.sum(1 / np.arange(1, x)) for x in nchrom_pop]
-                    ).reshape(-1, 1)
-                return snps_by_rep[0] / harmonic_numbers.T
+        nchrom = np.bincount(populations)
+        harmonic_num = np.apply_along_axis(
+            lambda x: np.sum(1 / np.arange(1, x)),
+            1, nchrom.reshape((-1, 1))
+            )
+        num_polymorphic = self.polymorphic(output="num", threshold=threshold)
+        return num_polymorphic / harmonic_num.reshape((-1, 1))
 
 
 class MetaSample(Sample):
@@ -824,6 +773,7 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
         )
     treesample = MetaSample(tree, populations)
     treesample.polymorphic()
+    treesample.theta_w(by_population=True)
     testtree2 = MetaSample(treesample.gtmatrix(), populations)
     testtree2.theta_w(True, populations)
     out = (np.zeros((num_replicates, len(stats) + len(params)))
