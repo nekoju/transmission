@@ -310,6 +310,7 @@ class Sample(object):
             popdata (TreeSequence object or np.ndarray): Single replicate for
                 which to compute num_mutants.
         """
+        # Allows computation of single replicate snps.
         popdata = (self.popdata
                    if not popdata
                    else tuple(popdata for _ in (0, )))
@@ -430,23 +431,27 @@ class Sample(object):
                 "which" returning indices,
                 or a tuple of both (default) returning a dict of both.
         """
-        num_mutants = self.num_mutants()
-        polymorphic = np.array(
-            [np.full(self.segsites, threshold) < num_mutants,
-             num_mutants < np.full(self.segsites, self.nchrom - threshold)]
-            ).all(axis=0)
-        if "which" in output:
-            which = np.nonzero(polymorphic)
-        if "num" in output:
-            num = np.count_nonzero(polymorphic)
-        if type(output) == tuple:
-            return {"which": which, "num": num}
-        elif output == "num":
-            return num
-        elif output == "which":
-            return which
+        valid_outputs = ("which", "num")
+        snp_array = np.zeros(
+            (self.npop, self.num_replicates), dtype=int
+            )
+        for repidx, rep in self.num_mutants(populations=self.populations):
+            which = []
+            snp_array[:, repidx] = np.count_nonzero(rep > threshold, 1)
+            snp_which = np.nonzero(rep > threshold)
+            which[repidx] = snp_which
+        results = {"which": snp_which,
+                   "num": snp_array}
+        if (type(output) == tuple and
+                len(
+                    set(output).intersection(
+                        set(valid_outputs)) == len(output)
+                    )):
+            return results
+        elif output in valid_outputs:
+            return results[output]
         else:
-            print(
+            raise ValueError(
                 "Invalid output, {output} specified."
                 "Specify 'num' or 'which'.".format(output=output)
                 )
