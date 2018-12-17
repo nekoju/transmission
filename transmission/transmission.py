@@ -227,6 +227,7 @@ class Sample(object):
             self.type = "ndarray"
         self.populations = np.zeros(self.nchrom)
         self.pop_sample_sizes = np.array(self.nchrom)
+        self.num_replicates = len(self.popdata)
 
     def __str__(self):
         print(
@@ -435,18 +436,18 @@ class Sample(object):
         snp_array = np.zeros(
             (self.npop, self.num_replicates), dtype=int
             )
-        for repidx, rep in self.num_mutants(populations=self.populations):
-            which = []
+        which = []
+        for repidx, rep in enumerate(
+                self.num_mutants(populations=self.populations)
+                ):
             snp_array[:, repidx] = np.count_nonzero(rep > threshold, 1)
             snp_which = np.nonzero(rep > threshold)
-            which[repidx] = snp_which
-        results = {"which": snp_which,
+            which.append(snp_which)
+        results = {"which": tuple(which),
                    "num": snp_array}
         if (type(output) == tuple and
-                len(
-                    set(output).intersection(
-                        set(valid_outputs)) == len(output)
-                    )):
+                len(set(output).intersection(set(valid_outputs)))
+                == len(output)):
             return results
         elif output in valid_outputs:
             return results[output]
@@ -529,6 +530,7 @@ class Sample(object):
                     [np.sum(1 / np.arange(1, x)) for x in nchrom_pop]
                     ).reshape(-1, 1)
                 return snps_by_rep[0] / harmonic_numbers.T
+
 
 class MetaSample(Sample):
 
@@ -821,6 +823,7 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
         **kwargs
         )
     treesample = MetaSample(tree, populations)
+    treesample.polymorphic()
     testtree2 = MetaSample(treesample.gtmatrix(), populations)
     testtree2.theta_w(True, populations)
     out = (np.zeros((num_replicates, len(stats) + len(params)))
