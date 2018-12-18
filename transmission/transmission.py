@@ -18,7 +18,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import collections.abc as collections
+import collections.abc
 import functools
 from multiprocessing import Pool
 import sys
@@ -213,7 +213,7 @@ class Sample(object):
         """
 
         # Make self.popdata iterable for consistency with multiple replicates.
-        if isinstance(popdata, collections.Iterator):
+        if isinstance(popdata, collections.abc.Iterator):
             self.popdata = tuple(popdata)
         elif (isinstance(popdata, list) or isinstance(popdata, tuple)):
             self.popdata = popdata
@@ -225,7 +225,8 @@ class Sample(object):
         else:
             self.nchrom = self.popdata[0].shape[0]
             self.type = "ndarray"
-        self.populations = np.zeros(self.nchrom)
+        self.populations = np.zeros(self.nchrom, dtype=int)
+        self.npop = 1
         self.pop_sample_sizes = np.array(self.nchrom)
         self.num_replicates = len(self.popdata)
 
@@ -271,14 +272,14 @@ class Sample(object):
                        if by_population
                        else np.zeros(self.nchrom, dtype=int))
         # populations for portability to MetaSample
-        out = []
         # Each row in harray is a population; each column a snp.
+        sample_sizes = (self.pop_sample_sizes
+                        if by_population
+                        else np.array([[self.nchrom]]))
+        out = []
         for repidx, replicate in enumerate(self.popdata):
             if replicate.num_sites != 0:
-                num_mutants = self.num_mutants(populations, replicate)
-                sample_sizes = (self.pop_sample_sizes
-                                if by_population
-                                else np.array([self.nchrom]))
+                num_mutants = self.num_mutants(populations, replicate)[0]
                 parray = np.true_divide(num_mutants, sample_sizes.T)
                 harray = 2 * parray * (1 - parray)
                 if bias:
@@ -295,8 +296,6 @@ class Sample(object):
                 out.append(np.full(1, 0.))
         if not average:
             return tuple(out)
-        elif not by_population:
-            return np.array(out).T[0]
         else:
             return np.array(out).T
 
@@ -335,10 +334,7 @@ class Sample(object):
                         )
             out.append(num_mutants)
         # Return tuple if multiple replicates, otherwise single matrix.
-        if len(popdata) > 1:
-            return tuple(out)
-        else:
-            return out[0]
+        return tuple(out)
 
     def pi(self, pi_method="h", h_opts={}, **kwargs):
         """
@@ -772,10 +768,6 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
         **kwargs
         )
     treesample = MetaSample(tree, populations)
-    treesample.polymorphic()
-    treesample.theta_w(by_population=True)
-    testtree2 = MetaSample(treesample.gtmatrix(), populations)
-    testtree2.theta_w(True, populations)
     out = (np.zeros((num_replicates, len(stats) + len(params)))
            if not average_final
            else np.zeros((1, len(stats) + len(params))))

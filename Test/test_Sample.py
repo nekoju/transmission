@@ -110,6 +110,20 @@ def test_h_average_one_rep(bias, expected, single_replicate):
         )
 
 
+@pytest.mark.parametrize("threshold, expected", [
+    (0, 1.928374656),
+    (1, 0.771349862),
+    ])
+def test_theta_w_one_rep(threshold, expected, single_replicate):
+    assert np.isclose(
+        expected,
+        single_replicate.theta_w(
+            by_population=False,
+            threshold=threshold
+            )
+        )
+
+
 # double replicate
 @pytest.mark.parametrize("bias, expected", [
     (False, [
