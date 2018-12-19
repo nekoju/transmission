@@ -79,13 +79,13 @@ def double_replicate():
 #         [0, 0, 0, 0, 1],
 #         [0, 0, 0, 0, 1]]),
 #  array([[1, 0, 0, 0, 1, 0, 0],
-#         [1, 0, 0, 0, 1, 0, 0],
-#         [0, 0, 0, 1, 0, 0, 0],
-#         [0, 1, 1, 0, 0, 0, 0],
-#         [0, 0, 0, 1, 0, 0, 0],
 #         [0, 1, 1, 0, 0, 0, 0],
 #         [1, 0, 0, 0, 1, 0, 0],
-#         [0, 0, 0, 0, 0, 1, 1]])]
+#         [1, 0, 0, 0, 1, 0, 0],
+#         [0, 0, 0, 0, 0, 1, 1],
+#         [1, 0, 0, 0, 1, 0, 0],
+#         [0, 0, 0, 1, 0, 0, 0],
+#         [0, 0, 0, 1, 0, 0, 0]])
 
 
 # single replicate
@@ -128,28 +128,38 @@ def test_theta_w_one_rep(threshold, expected, single_replicate):
 @pytest.mark.parametrize("bias, expected", [
     (False, [
         np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875]),
-        np.array([0.46875, 0.375, 0.375, 0.375, 0.46875, 0.21875, 0.21875])
+        np.array([0.5, 0.21875, 0.21875, 0.375, 0.5, 0.21875, 0.21875])
         ]),
     (True, [
         (8. / (8. - 1.) *
          np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875])),
         (8. / (8. - 1) *
-         np.array([0.46875, 0.375, 0.375, 0.375, 0.46875, 0.21875, 0.21875]))
+         np.array([0.5, 0.21875, 0.21875,
+                   0.375, 0.5, 0.21875, 0.21875]))
         ]),
     ])
 def test_h_no_average_two_reps(bias, expected, double_replicate):
     heterozygosity = double_replicate.h(bias=bias)
-    out = [np.isclose(expected, heterozygosity[i]).all()
-           for i, expected in enumerate(expected)]
+    out = [np.isclose(expected_local, heterozygosity[i]).all()
+           for i, expected_local in enumerate(expected)]
     assert all(out)
 
 
 @pytest.mark.parametrize("bias, expected", [
-    (False, [0.300, 0.357142857]),
-    (True, [(8. / (8. - 1.) * 0.300), (8. / (8. - 1) * 0.357142857)]),
+    (False, [0.300, 0.321428571]),
+    (True, [(8. / (8. - 1.) * 0.300), (8. / (8. - 1) * 0.321428571)])
     ])
 def test_h_average_two_reps(bias, expected, double_replicate):
     heterozygosity = double_replicate.h(bias=bias, average=True)
-    out = [np.isclose(expected, heterozygosity[i]).all()
-           for i, expected in enumerate(expected)]
+    out = [np.isclose(expected_local, heterozygosity[0, i]).all()
+           for i, expected_local in enumerate(expected)]
     assert all(out)
+
+
+@pytest.mark.parametrize("threshold, expected", [
+    (0, np.array([1.928374656, 2.699724518])),
+    (1, np.array([0.771349862, 1.157024793]))
+    ])
+def test_theta_w_two_reps(threshold, expected, double_replicate):
+    out = np.isclose(double_replicate.theta_w(threshold=threshold), expected)
+    assert out.all()
