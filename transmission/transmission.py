@@ -30,6 +30,7 @@ import rpy2.robjects as robjects
 import rpy2.robjects.numpy2ri as numpy2ri
 from rpy2.robjects.packages import importr
 import rpy2.robjects.vectors as vectors
+from tqdm import tqdm
 
 
 class Abc(object):
@@ -618,7 +619,8 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
                 stats=("fst_mean", "fst_sd", "pi_h"),
                 prior_params={"sigma": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
                 nsamp_populations=None, num_replicates=1, num_cores="auto",
-                prior_seed=None, average_final=True, h_opts={}, **kwargs):
+                prior_seed=None, average_final=True, progress_bar=False,
+                h_opts={}, **kwargs):
     """
     Generate random sample summary using msprime for the specified prior
     distributions of tau (vertical transmission rate) and rho (sex ratio).
@@ -655,11 +657,13 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
             metasimulation.
         average_final (bool): Whether to average replicates. False will return
             raw simulations.
+        progress_bar (bool): Display a progress bar for prior simulations.
+            Redundant if num_cores is set to None.
         num_cores (int or str): The number of cores to use for computation.
             "auto" will automatically detect using multiprocessing.cpu_count().
             None will use a single thread not routed through
             multiprocessing.Pool, primarily for debugging and profiling.
-            An int value will specify the number of threads to use.
+            An int value will specify the number of cores to use.
         prior_seed (int): The seed used to draw samples for tau and rho.
             Setting a seed will allow repeatability of results.
         h_opts (dict): Extra options for Sample.h() in the form of a kwargs
@@ -706,14 +710,22 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
                      )
                  }
     if num_cores:
+        # for multiprocessing, None automatically detects number of cores.
+        # Switching here allows autodetection.
         if num_cores == "auto":
             num_cores = None
         pool = Pool(processes=num_cores)
-        out = np.array(pool.map(simpartial, params))
-        out = np.core.records.fromarrays(out.T, dtype=structure)
+        if progress_bar:
+            out = np.array(
+                list(
+                    tqdm(pool.imap(simpartial, params), total=len(params))
+                    )
+                )
+        else:
+            out = np.array(list(pool.imap(simpartial, params)))
     else:
         out = np.apply_along_axis(simpartial, 1, params)
-        out = np.core.records.fromarrays(out.T, dtype=structure)
+    out = np.core.records.fromarrays(out.T, dtype=structure)
     return out
 
 
@@ -864,11 +876,12 @@ def main():
         host_theta=host_theta, host_Nm=host_Nm,
         num_simulations=100, num_replicates=10,
         prior_params={"sigma": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
-        num_cores=None,
+        num_cores="auto",
         prior_seed=prior_seed,
         average_final=True,
         h_opts={"bias": True},
-        random_seed=random_seed
+        random_seed=random_seed,
+        progress_bar=True
         )
     r_abc = Abc(
         target=test_target[0:3],
