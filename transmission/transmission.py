@@ -464,6 +464,19 @@ class Sample(object):
         return out[0] if out.size == 1 else out
 
     def theta_w(self, by_population=False, threshold=0):
+        """
+        Calculate the Watterson estimator.
+        
+        Args:
+            by_population (bool): Whether to compute theta_w per-population.
+            threshold (int): Sites with threshold or fewer derived alleles will
+                not be considered as SNPs, e.g., threshold=1 excludes
+                singletons.
+
+        Returns:
+            If by_population: npop X num_replicates np.ndarray
+            If not by_population: 1 X num_replicates np.ndarray
+        """
         # Check if multiple populations are provided or desired
         populations = (self.populations
                        if by_population
