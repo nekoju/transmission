@@ -5,3 +5,5 @@
 tags
 **.orig
 **/__pycache__*
+bin/*
+transmission.egg-info/*

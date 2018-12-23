@@ -18,13 +18,16 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+import ast
 import collections.abc
 import functools
 from multiprocessing import Pool
+import pickle
 import sys
 
-import numpy as np
+import click
 import msprime as ms
+import numpy as np
 from rpy2.rinterface import NULL
 import rpy2.robjects as robjects
 import rpy2.robjects.numpy2ri as numpy2ri
@@ -826,6 +829,84 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
     out[:, -2] = tau
     out[:, -1] = rho
     return out if not average_final else out[0]
+
+
+@click.command()
+@click.option('-n', '--nchrom', required=True, type=int,
+              help='The number of chromosomes to sample from *each*'
+              'population.')
+@click.option('-d', '--demes', 'num_populations', required=True, type=int,
+              help='The number of subpopulations.')
+@click.option('-M', '--Nm', 'host_Nm', required=True, type=float,
+              help="The host's Nm, calculated from mitochondrial or nuclear"
+              "Fst")
+@click.option('-t', '--theta', 'host_theta', required=True, type=float,
+              help="The host's haploid theta estimated using pi or the Watterson"
+              "estimator.")
+@click.option('-s', '--numsim', 'num_simulations', default=10, type=int,
+              help='The number of independent transmission parameters to'
+              'simulate.')
+@click.option('-r', '--replicates', 'num_replicates', default=10, type=int,
+              help='The number of replicates for each simulation.')
+@click.option('--sigma', 'sigma_params', nargs=2, default=(0., 0.1),
+              type=float, help='Parameters for simulation of sigma (mutational'
+              'multiplier as an exponent of 10). These follow a normal'
+              'distribution with parameters (mean, sd).')
+@click.option('--tau', 'tau_params', nargs=2, default=(1, 1), type=float,
+              help='Parameters of the vertical transmission rate, following'
+              'a beta distribution with parameters (a, b)')
+@click.option('--rho', 'rho_params', nargs=2, default=(1, 1), type=float,
+              help='Parameters for simulation of rho, the sex ratio of the'
+              'population. These follow a modified beta distribution over'
+              '(0, 2), and accept parameters (a, b).')
+@click.option('--nc', 'num_cores', default="auto", type=str,
+              help='The number of processing cores to use')
+@click.options('--ps', 'prior_seed', type=int,
+               help='The seed value for reproducible prior parameters')
+@click.options('--rs', 'random_seed', type=int,
+               help='The seed value for reproducible trees.')
+@click.options('--prog', 'progress_bar', default=True, type=bool,
+               help='Display a progress bar.')
+@click.options('--h_opts', default='', type=str,
+               help='options for transmission.Sample.h(), given as a sting'
+               'representation of a dictionary.')
+@click.arguments('outfile', type=click.File('wb'),
+                 help='The name of an output file to which the pickled array'
+                 'will be written.')
+def simulate_prior_stats(nchrom, num_populations, host_Nm, host_theta,
+                         num_simulations, num_replicates,
+                         sigma_params, tau_params, rho_params,
+                         num_cores, prior_seed, random_seed, h_opts,
+                         progress_bar, outfile):
+    """
+    Generate pickled structured array of statistics from parameters generated
+    from given priors.
+
+    usage: transmission_prior_stats [options] outfile.pickle
+    """
+
+    prior_params = dict(
+        zip(("sigma", "tau", "rho"),
+            (sigma_params, tau_params, rho_params))
+        )
+    try:
+        num_cores = int(num_cores)
+    except ValueError:
+        if num_cores == "auto":
+            pass
+        else:
+            raise ValueError("num_cores must be 'auto' or int")
+
+    simulation_data = ms_simulate(
+        nchrom=nchrom, num_populations=num_populations,
+        host_theta=host_theta, host_Nm=host_Nm,
+        num_simulations=num_simulations, num_replicates=num_replicates,
+        prior_params=prior_params, num_cores=num_cores, prior_seed=prior_seed,
+        random_seed=random_seed,
+        average_final=True, h_opts=ast.literal_eval(h_opts),
+        progress_bar=progress_bar
+        )
+    pickle.dump(simulation_data, outfile)
 
 
 def main():

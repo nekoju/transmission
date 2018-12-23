@@ -1,18 +1,27 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
         name='transmission',
         version='0.1',
-        description=('tools for inferring symbiont transmission mode from host'
+        py_modules=['transmission'],
+        description=('Tools for inferring symbiont transmission mode from'
                      'metagenomic data'),
         url='http://github.com/mpjuers/transmission',
         author='Mark Juers',
         author_email='mpjuers@indiana.edu',
         license='GPL>=3',
-        packages=['transmission'],
+        packages=find_packages(),
+        include_pakage_data=True,
         install_requires=[
+            'Click',
             'msprime',
-            'numpy'
+            'numpy',
+            'rpy2',
+            'tqdm'
             ],
+        entry_points='''
+        [console_scripts]
+        transmission-priorgen=transmission.transmission:simulate_prior_stats
+        ''',
         zip_safe=False
-        )
+    )
