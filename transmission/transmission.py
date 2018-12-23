@@ -834,61 +834,54 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
 @click.command()
 @click.option('-n', '--nchrom', required=True, type=int,
               help='The number of chromosomes to sample from *each*'
-              'population.')
+              ' population.', show_default=True)
 @click.option('-d', '--demes', 'num_populations', required=True, type=int,
-              help='The number of subpopulations.')
+              help='The number of subpopulations.', show_default=True)
 @click.option('-M', '--Nm', 'host_Nm', required=True, type=float,
               help="The host's Nm, calculated from mitochondrial or nuclear"
-              "Fst")
+              " Fst", show_default=True)
 @click.option('-t', '--theta', 'host_theta', required=True, type=float,
-              help="The host's haploid theta estimated using pi or the Watterson"
-              "estimator.")
+              help="The host's haploid theta estimated using pi or the"
+              " Watterson estimator.", show_default=True)
 @click.option('-s', '--numsim', 'num_simulations', default=10, type=int,
               help='The number of independent transmission parameters to'
-              'simulate.')
+              ' simulate.', show_default=True)
 @click.option('-r', '--replicates', 'num_replicates', default=10, type=int,
-              help='The number of replicates for each simulation.')
-@click.option('--sigma', 'sigma_params', nargs=2, default=(0., 0.1),
-              type=float, help='Parameters for simulation of sigma (mutational'
-              'multiplier as an exponent of 10). These follow a normal'
-              'distribution with parameters (mean, sd).')
-@click.option('--tau', 'tau_params', nargs=2, default=(1, 1), type=float,
-              help='Parameters of the vertical transmission rate, following'
-              'a beta distribution with parameters (a, b)')
-@click.option('--rho', 'rho_params', nargs=2, default=(1, 1), type=float,
-              help='Parameters for simulation of rho, the sex ratio of the'
-              'population. These follow a modified beta distribution over'
-              '(0, 2), and accept parameters (a, b).')
+              help='The number of replicates for each simulation.',
+              show_default=True)
+@click.option('-p', '--params', 'prior_params',
+              default='{"sigma": (0, 0.1), "tau": (1, 1), "rho": (1, 1)}',
+              type=str, help='A dict formatted as a string containing'
+              ' hyperparameters for distributions of sigma, tau, and rho'
+              ' The distribution of sigma is normal (mean, sd),'
+              ' while tau and rho are beta with pararmeters (a, b). rho uses'
+              ' a nonstandard beta distribution with support (0, 2).',
+              show_default=True)
 @click.option('--nc', 'num_cores', default="auto", type=str,
-              help='The number of processing cores to use')
-@click.options('--ps', 'prior_seed', type=int,
-               help='The seed value for reproducible prior parameters')
-@click.options('--rs', 'random_seed', type=int,
-               help='The seed value for reproducible trees.')
-@click.options('--prog', 'progress_bar', default=True, type=bool,
-               help='Display a progress bar.')
-@click.options('--h_opts', default='', type=str,
-               help='options for transmission.Sample.h(), given as a sting'
-               'representation of a dictionary.')
-@click.arguments('outfile', type=click.File('wb'),
-                 help='The name of an output file to which the pickled array'
-                 'will be written.')
+              help='The number of processing cores to use. For now,'
+              ' integers must be quoted. "auto" will detect available procs.',
+              show_default=True)
+@click.option('--ps', 'prior_seed', type=int,
+              help='The seed value for reproducible prior parameters',
+              show_default=True)
+@click.option('--rs', 'random_seed', type=int,
+              help='The seed value for reproducible trees.',
+              show_default=True)
+@click.option('--prog', 'progress_bar', default=True, type=bool,
+              help='Display a progress bar.', show_default=True)
+@click.option('--h_opts', default='{}', type=str,
+              help='options for transmission.Sample.h(), given as a sting'
+              ' representation of a dictionary.', show_default=True)
+@click.argument('outfile', type=click.File('wb'))
 def simulate_prior_stats(nchrom, num_populations, host_Nm, host_theta,
                          num_simulations, num_replicates,
-                         sigma_params, tau_params, rho_params,
-                         num_cores, prior_seed, random_seed, h_opts,
-                         progress_bar, outfile):
+                         prior_params, num_cores, prior_seed, random_seed,
+                         h_opts, progress_bar, outfile):
     """
-    Generate pickled structured array of statistics from parameters generated
-    from given priors.
-
-    usage: transmission_prior_stats [options] outfile.pickle
+    Generate pickled structured array of prior statistics with parameters
+    generated from given hyper-priors.
     """
 
-    prior_params = dict(
-        zip(("sigma", "tau", "rho"),
-            (sigma_params, tau_params, rho_params))
-        )
     try:
         num_cores = int(num_cores)
     except ValueError:
@@ -901,7 +894,8 @@ def simulate_prior_stats(nchrom, num_populations, host_Nm, host_theta,
         nchrom=nchrom, num_populations=num_populations,
         host_theta=host_theta, host_Nm=host_Nm,
         num_simulations=num_simulations, num_replicates=num_replicates,
-        prior_params=prior_params, num_cores=num_cores, prior_seed=prior_seed,
+        prior_params=ast.literal_eval(prior_params), num_cores=num_cores,
+        prior_seed=prior_seed,
         random_seed=random_seed,
         average_final=True, h_opts=ast.literal_eval(h_opts),
         progress_bar=progress_bar
@@ -964,7 +958,6 @@ def main():
     #     populations=populations, random_seed=random_seed,
     #     num_replicates=10, average_final=False
     #     )
-    
     test_simulation = ms_simulate(
         nchrom=10, num_populations=10,
         host_theta=host_theta, host_Nm=host_Nm,
