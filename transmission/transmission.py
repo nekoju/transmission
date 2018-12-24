@@ -631,6 +631,20 @@ def beta_nonst(alpha, beta, a=0, b=1, n=1):
     return np.random.beta(alpha, beta, n) * (b - a) + a
 
 
+def fst(Nm, tau, rho):
+    """
+    Theoretical Fst from Nm, tau, and rho.
+
+    Args:
+        Nm (float): The migration parameter Ne * m.
+        tau (float): The rate of vertical transmission.
+        rho (float): The sex ratio.
+    """
+
+    return ((tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho) /
+            (tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho * (2 * Nm + 1)))
+
+
 def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
                 stats=("fst_mean", "fst_sd", "pi_h"),
                 prior_params={"sigma": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
