@@ -552,7 +552,7 @@ class MetaSample(Sample):
         self.populations = populations
 
     def fst(self, fst_method="gst",
-            summary="mean", average_final=False, average_sites=True,
+            summary="mean", average_reps=False, average_sites=True,
             h_opts={}):
         """
         Returns specified fst statistic.
@@ -566,7 +566,7 @@ class MetaSample(Sample):
                 replicates. Can take arguments "mean" or "sd" for standard
                 deviation. Returns a dictionary of the supplied statistics.
                 Redundant if not average_sites.
-            average_final (bool): Whether to average final fst values. If true,
+            average_reps (bool): Whether to average final fst values. If true,
                 returns 1 fst value, otherwise 1 value for each replicate in an
                 array. Redundant if not average_sites.
             h_opts (dict): Extra arguments for Sample.h(), in the form of a
@@ -602,7 +602,7 @@ class MetaSample(Sample):
                         stats.append([np.std(x) for x in fst])
                     else:
                         stats.append(0.0)
-                if average_final:
+                if average_reps:
                     try:
                         stats = [np.average(
                             x, weights=self.segsites()[ind])
@@ -760,7 +760,7 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
 
 
 def sim(params, host_theta, host_Nm, population_config, populations, stats,
-        num_replicates, average_final=True, h_opts={}, **kwargs):
+        num_replicates, average_reps=True, h_opts={}, **kwargs):
     """
     Runs actual simulation with ms. Intended as helper for ms_simulate().
 
@@ -775,7 +775,7 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
         populations (np.ndarray): A nchrom np.ndarray indicating to which
             population each chromosome belongs.
         stats (tuple): The requested statistics to be calculated.
-        average_final (bool): Whether to return averaged replicates. False will
+        average_reps (bool): Whether to return averaged replicates. False will
             return raw summaries.
         num_replicates (int): Number of msprime replicates to run for each
             simulated parameter pair and the number of simulations in each
@@ -791,8 +791,8 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
     migration = np.full(
         (num_populations, num_populations),
         np.true_divide(
-            # num_populations is multiplied by 2 to preserve the value of 2*Nm
-            # during the simulation as ms does.
+            # num_populations - 1 is multiplied by 2 to preserve the value of
+            # 2*Nm during the simulation as ms does.
             symbiont_Nm, ((num_populations - 1) * 2)
             )
         )
@@ -811,38 +811,41 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
         )
     treesample = MetaSample(tree, populations)
     out = (np.zeros((num_replicates, len(stats) + len(params)))
-           if not average_final
+           if not average_reps
            else np.zeros((1, len(stats) + len(params))))
     if len(set(("fst_mean", "fst_sd")).intersection(set(stats))) > 0:
         fst_summ = treesample.fst(average_sites=True,
-                                  average_final=average_final,
+                                  average_reps=average_reps,
                                   summary=("mean", "sd"), h_opts=h_opts)
-    for i, stat in enumerate(stats):
+    for statidx, stat in enumerate(stats):
         if stat == "pi_h":
-            out[:, i] = (treesample.pi(pi_method="h", h_opts=h_opts, **kwargs)
-                         if not average_final
-                         else np.mean(treesample.pi(pi_method="h",
-                                                    h_opts=h_opts, **kwargs)))
+            out[:, statidx] = (treesample.pi(pi_method="h", h_opts=h_opts,
+                                             **kwargs)
+                               if not average_reps
+                               else np.mean(treesample.pi(pi_method="h",
+                                            h_opts=h_opts, **kwargs)))
         elif stat == "pi_nei":
-            out[:, i] = (treesample.pi(pi_method="nei", **kwargs)
-                         if not average_final
-                         else np.mean(
-                             treesample.pi(pi_method="nei", **kwargs))
-                         )
+            out[:, statidx] = (treesample.pi(pi_method="nei", **kwargs)
+                               if not average_reps
+                               else np.mean(
+                                   treesample.pi(pi_method="nei", **kwargs)
+                                   )
+                               )
         elif stat == "pi_tajima":
-            out[:, i] = (treesample.pi(pi_method="tajima", **kwargs)
-                         if not average_final
-                         else np.mean(
-                             treesample.pi(pi_method="tajima", **kwargs)
-                             ))
+            out[:, statidx] = (treesample.pi(pi_method="tajima", **kwargs)
+                               if not average_reps
+                               else np.mean(
+                                   treesample.pi(pi_method="tajima", **kwargs)
+                                   )
+                               )
         elif stat == "fst_mean":
-            out[:, i] = fst_summ["mean"]
+            out[:, statidx] = fst_summ["mean"]
         elif stat == "fst_sd":
-            out[:, i] = fst_summ["sd"]
+            out[:, statidx] = fst_summ["sd"]
     out[:, -3] = sigma
     out[:, -2] = tau
     out[:, -1] = rho
-    return out if not average_final else out[0]
+    return out if not average_reps else out[0]
 
 
 @click.command()
