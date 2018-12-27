@@ -649,7 +649,7 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
                 stats=("fst_mean", "fst_sd", "pi_h"),
                 prior_params={"sigma": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
                 nsamp_populations=None, num_replicates=1, num_cores="auto",
-                prior_seed=None, average_final=True, progress_bar=False,
+                prior_seed=None, average_reps=True, progress_bar=False,
                 h_opts={}, **kwargs):
     """
     Generate random sample summary using msprime for the specified prior
@@ -685,7 +685,7 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
         num_replicates (int): Number of msprime replicates to run for each
             simulated parameter pair and the number of simulations in each
             metasimulation.
-        average_final (bool): Whether to average replicates. False will return
+        average_reps (bool): Whether to average replicates. False will return
             raw simulations.
         progress_bar (bool): Display a progress bar for prior simulations.
             Redundant if num_cores is set to None.
@@ -731,7 +731,7 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
         sim,
         host_theta=host_theta, host_Nm=host_Nm,
         population_config=population_config, num_replicates=num_replicates,
-        populations=populations, average_final=True, stats=stats,
+        populations=populations, average_reps=True, stats=stats,
         h_opts=h_opts, **kwargs
         )
     structure = {"names": stats + tuple(prior_params.keys()),
@@ -884,8 +884,8 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
 @click.option('--rs', 'random_seed', type=int,
               help='The seed value for reproducible trees.',
               show_default=True)
-@click.option('--prog', 'progress_bar', default=True, type=bool,
-              help='Display a progress bar.', show_default=True)
+@click.option('--noprog', 'progress_bar', default=True, is_flag=True,
+              help="Do not display a progress bar.")
 @click.option('--h_opts', default='{}', type=str,
               help='options for transmission.Sample.h(), given as a sting'
               ' representation of a dictionary.', show_default=True)
@@ -914,7 +914,7 @@ def simulate_prior_stats(nchrom, num_populations, host_Nm, host_theta,
         prior_params=ast.literal_eval(prior_params), num_cores=num_cores,
         prior_seed=prior_seed,
         random_seed=random_seed,
-        average_final=True, h_opts=ast.literal_eval(h_opts),
+        average_reps=True, h_opts=ast.literal_eval(h_opts),
         progress_bar=progress_bar
         )
     pickle.dump(simulation_data, outfile)
@@ -966,14 +966,14 @@ def main():
         population_config=population_config,
         populations=populations, num_replicates=int(sys.argv[1]),
         random_seed=random_seed,
-        average_final=True
+        average_reps=True
         )
     # test_target2 = sim(
     #     (1, 1, 1),
     #     stats=("fst_mean", "fst_sd", "pi_h"),
     #     population_config=population_config,
     #     populations=populations, random_seed=random_seed,
-    #     num_replicates=10, average_final=False
+    #     num_replicates=10, average_reps=False
     #     )
     test_simulation = ms_simulate(
         nchrom=10, num_populations=10,
@@ -982,7 +982,7 @@ def main():
         prior_params={"sigma": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
         num_cores="auto",
         prior_seed=prior_seed,
-        average_final=True,
+        average_reps=True,
         h_opts={"bias": True},
         random_seed=random_seed,
         progress_bar=True
