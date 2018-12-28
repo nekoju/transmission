@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
         name='transmission',
-        version='0.1',
+        version='0.0.1',
         py_modules=['transmission'],
         description=('Tools for inferring symbiont transmission mode from'
                      'metagenomic data'),
@@ -13,7 +13,7 @@ setup(
         packages=find_packages(),
         include_pakage_data=True,
         install_requires=[
-            'Click',
+            'click',
             'msprime',
             'numpy',
             'rpy2',
