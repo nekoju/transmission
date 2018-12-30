@@ -1,0 +1,6 @@
+pypandoc >= 1.4
+click >= 7.0
+msprime >= 0.6.2
+numpy >= 1.15.4
+rpy2 >= 2.9.5
+tqdm >= 4.28.1

@@ -8,3 +8,4 @@ tags
 bin/*
 transmission.egg-info/*
 dist/*
+README.rst

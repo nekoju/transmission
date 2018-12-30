@@ -1,5 +1,10 @@
-from setuptools import setup, find_packages
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
+from setuptools import setup, find_packages
+import pypandoc
+
+pypandoc.convert_file('README.md,' 'rst', outputfile='README.rst')
 setup(
     name='transmission',
     version='0.0.1',
@@ -12,7 +17,7 @@ setup(
     license='GPL>=3',
     packages=find_packages(),
     include_pakage_data=True,
-    install_requires=[
+    install_requirjes=[
         'click',
         'msprime',
         'numpy',
