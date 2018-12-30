@@ -1,6 +1,8 @@
-pypandoc >= 1.4
-click >= 7.0
-msprime >= 0.6.2
-numpy >= 1.15.4
-rpy2 >= 2.9.5
-tqdm >= 4.28.1
+Click==7.0
+numpy==1.15.4
+tqdm==4.28.1
+pypandoc==1.4
+rpy2==2.9.5
+setuptools==39.0.1
+msprime==0.6.2
+pytest==4.0.2
