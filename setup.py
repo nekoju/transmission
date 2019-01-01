@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 import pypandoc
 
-pypandoc.convert_file('README.md,' 'rst', outputfile='README.rst')
+pypandoc.convert_file('README.md', 'rst', outputfile='README.rst')
 setup(
     name='transmission',
     version='0.0.1',
