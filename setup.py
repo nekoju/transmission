@@ -16,8 +16,8 @@ setup(
     author_email='mpjuers@indiana.edu',
     license='GPL>=3',
     packages=find_packages(),
-    include_pakage_data=True,
-    install_requirjes=[
+    include_package_data=True,
+    install_requires=[
         'click',
         'msprime',
         'numpy',
