@@ -7,3 +7,7 @@
 - Added requirements.txt.
 - Moved simulate_prior_stats to transmission/cli_tools.py.
 
+## 0.0.3
+
+- Added Dockerfile
+

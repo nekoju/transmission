@@ -3,4 +3,30 @@ subtitle: A tool for inferring symbiont transmission mode from metagenomic data
 title: transmission
 ---
 
+# Generating simulated summary statistics
 
+This is a big job and I find it helpful to farm this job out to a computing
+cluster. To that end, the cli tool `transmission-priorgen` is included with
+transmission. Use `transmission-priorgen --help` for details on available
+options. 
+
+## Natively
+
+For example:
+
+```
+transmission-priorgen -n 10 -d 5 -M 2 -s 100 \
+    -p '{"sigma": (0, 0.1), "tau":(1, 1), "rho"(10, 10)}' \
+    --h_opts '{"bias": False}' outfile.pickle
+```
+
+## Using the Docker image
+
+```
+docker run --rm -v </path/to/host/directory/>:/home/jovyan/work \
+    transmission:version transmission-priorgen [options] \
+    /home/jovyan/work/<outfile.pickle>
+```
+
+`--rm` removes containers you are finished with while `-v` ("volume") binds
+a directory on the host machine to one on the container.
