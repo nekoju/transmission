@@ -6,7 +6,8 @@ title: transmission
 # Generating simulated summary statistics
 
 This is a big job and I find it helpful to farm this job out to a computing
-cluster. To that end, the cli tool `transmission-priorgen` is included with
+cluster. The main program is written for interactive use in a notebook or shell,
+so to that end, the cli tool `transmission-priorgen` is included with
 transmission. Use `transmission-priorgen --help` for details on available
 options. 
 
