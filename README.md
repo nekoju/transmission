@@ -24,10 +24,23 @@ transmission-priorgen -n 10 -d 5 -M 2 -s 100 \
 ## Using the Docker image
 
 ```
-docker run --rm -v </path/to/host/directory/>:/home/jovyan/work \
-    transmission:version transmission-priorgen [options] \
-    /home/jovyan/work/<outfile.pickle>
+docker run --rm -v </path/to/host/directory>:/home/jovyan/work \
+    mpjuers/transmission:<version> \
+    transmission-priorgen [options] /home/jovyan/work/<outfile.pickle>
 ```
 
 `--rm` removes containers you are finished with while `-v` ("volume") binds
-a directory on the host machine to one on the container.
+a directory on the host machine to one on the container. <version> should be
+prefixed by 'v', e.g. v0.0.3
+
+If you are working on a compute cluster, you might have access to Singularity
+rather than Docker. The transition is straightforward:
+
+```
+singularity exec --contain -B </path/to/host/directory>:/home/jovyan/work \
+    docker://mpjuers/transmission:<version> \
+    transmission-priorgen [options] /home/jovyan/work/<outfile.pickle>
+```
+
+You may or man not need the `--contain` flag; I needed because I had some
+locally installed python modules that conflicted with those in the container.
