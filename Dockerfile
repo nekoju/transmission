@@ -36,6 +36,7 @@ RUN apt-get update && apt-get -yq install libreadline-dev
 USER $NB_UID
 
 RUN conda install pip
+RUN conda update numpy
 # Install build requirements.
 RUN cd Transmission && \
     while read requirement; do \
