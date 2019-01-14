@@ -20,7 +20,7 @@
 
 import collections.abc
 import functools
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 import sys
 
 import msprime as ms
@@ -740,7 +740,7 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
         # for multiprocessing, None automatically detects number of cores.
         # Switching here allows autodetection.
         if num_cores == "auto":
-            num_cores = None
+            num_cores = cpu_count()
         pool = Pool(processes=num_cores)
         if progress_bar:
             out = np.array(

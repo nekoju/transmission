@@ -11,3 +11,7 @@
 
 - Added Dockerfile
 
+## 0.0.4
+
+- Tested prior generation with Docker and Singularity.
+
