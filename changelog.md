@@ -14,4 +14,5 @@
 ## 0.0.4
 
 - Tested prior generation with Docker and Singularity.
+- Resolved a problem wherein host_Ne was actually host N.
 
