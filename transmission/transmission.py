@@ -782,9 +782,11 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
         **kwargs (): Extra arguments for msprime.simulate().
     """
     sigma, tau, rho = params
+    A = tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
     num_populations = len(population_config)
-    symbiont_Nm = np.true_divide(host_Nm * rho,
-                                 tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho)
+    symbiont_Nm = np.true_divide(host_Nm * (1 + rho) ** 2, 4 * A)
+    symbiont_theta = np.true_divide(10 ** sigma * host_theta * (1 + rho) ** 2,
+                                    4 * A)
     migration = np.full(
         (num_populations, num_populations),
         np.true_divide(
@@ -794,10 +796,6 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
             )
         )
     np.fill_diagonal(migration, 0)
-    symbiont_theta = host_theta * np.true_divide(
-        rho * 10 ** sigma,
-        tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
-        )
     tree = ms.simulate(
         Ne=0.5,  # again, factor of 1/2 to preserve ms behavior
         num_replicates=num_replicates,
