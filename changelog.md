@@ -14,4 +14,8 @@
 ## 0.0.4
 
 - Tested prior generation with Docker and Singularity.
+- Resolved a problem wherein host_Ne was actually host N.
 
+## 0.0.4a
+
+- Previous release had a type in sim().
