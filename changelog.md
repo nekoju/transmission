@@ -18,4 +18,8 @@
 
 ## 0.0.4a
 
-- Previous release had a type in sim().
+- Previous release had a typo in sim().
+
+## 0.0.4b
+
+- Fixed math behind parameter estimation, N/Ne problem in sim().
