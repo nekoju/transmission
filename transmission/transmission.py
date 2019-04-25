@@ -613,6 +613,21 @@ class MetaSample(Sample):
             raise Exception("invalid method {}".format(fst_method))
 
 
+def beta_nonst(alpha, beta, a=0, b=1, n=1):
+    """
+    Draws instances of a random variable from a nonstandard beta distribution
+    over the interval [a, b]. By default returns standard beta variables.
+    Args:
+        alpha (float): The first beta shape parameter. A nonnegative float.
+        beta (float): The second beta shape parameter.
+        a (float): The beginning of the interval of the distribution.
+        b (float): The end of the interval of the distribution.
+        n (int): The number of observations to be drawn.
+    """
+
+    return np.random.beta(alpha, beta, n) * (b - a) + a
+
+
 def fst(Nm, tau, rho):
     """
     Theoretical Fst from Nm, tau, and rho.
@@ -620,11 +635,13 @@ def fst(Nm, tau, rho):
     Args:
         Nm (float): The migration parameter Ne * m.
         tau (float): The rate of vertical transmission.
-        rho (float): The sex ratio.
+        rho (float): The proportion of the population that is female.
     """
 
-    return ((tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho) /
-            (tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho * (2 * Nm + 1)))
+    A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
+    B = 2 * rho * (1 - rho) * (A + rho)
+
+    return B / (Nm * rho + B)
 
 
 def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
@@ -662,8 +679,8 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
         prior_params (dict): A dict containing tuples specifiying the prior
             distribution parameters for sigma, tau, and rho. That is, the
             mutation rate multiplier, vertical transmission frequency, and
-            population proportion of females. Optionally one may provide a
-            scalar value for sigma to fix the mutation rate multiplier.
+            sex ratio. Optionally one may provide a scalar value for sigma to
+            fix the mutation rate multiplier.
         num_replicates (int): Number of msprime replicates to run for each
             simulated parameter pair and the number of simulations in each
             metasimulation.
@@ -704,10 +721,10 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
             )
     else:
         raise Exception("sigma must be tuple or float")
-    tau = np.random.beta(prior_params["tau"][0], prior_params["tau"][1],
-                         n=num_simulations)
-    rho = np.random.beta(prior_params["rho"][0], prior_params["rho"][1],
-                         n=num_simulations)
+    tau = beta_nonst(prior_params["tau"][0], prior_params["tau"][1],
+                     n=num_simulations)
+    rho = beta_nonst(prior_params["rho"][0], prior_params["rho"][1], a=0, b=2,
+                     n=num_simulations)
     params = np.array([sigma, tau, rho]).T
     simpartial = functools.partial(
         sim,
@@ -767,11 +784,11 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
         **kwargs (): Extra arguments for msprime.simulate().
     """
     sigma, tau, rho = params
-    A = tau ** 2 * (3 - 2 * tau) * (2 - rho)
+    A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
     B = 2 * rho * (1 - rho) * (A + rho)
-    num_populations = len(population_config)
     symbiont_Nm = np.true_divide(host_Nm * rho, 2 * B)
     symbiont_theta = np.true_divide(10 ** sigma * host_theta * rho, 2 * B)
+    num_populations = len(population_config)
     migration = np.full(
         (num_populations, num_populations),
         np.true_divide(
