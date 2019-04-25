@@ -23,3 +23,7 @@
 ## 0.0.4b
 
 - Fixed math behind parameter estimation, N/Ne problem in sim().
+
+## 0.0.4c
+
+- Fixed above math again.
