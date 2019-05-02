@@ -41,7 +41,7 @@ class Abc(object):
 
     def __init__(self, target, param, sumstat, tol=0.1, method="loclinear",
                  transf={"tau": "logit", "rho": "logit", "sigma": None},
-                 logit_bounds={"tau": (0, 1), "rho": (0, 2), "sigma": (1, 1)},
+                 logit_bounds={"tau": (0, 1), "rho": (0, 1), "sigma": (1, 1)},
                  **kwargs):
         """
         target(np.ndarray): 0 x nstat array of calculated summary

@@ -27,3 +27,7 @@
 ## 0.0.4c
 
 - Fixed above math again.
+
+## 0.0.5a
+
+- Changed logit_bounds in Abc() for rho to reflect (0, 1) range.
