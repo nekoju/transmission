@@ -31,3 +31,7 @@
 ## 0.0.5a
 
 - Changed logit_bounds in Abc() for rho to reflect (0, 1) range.
+
+## 0.0.5b
+
+- Got rid of beta_nonstandard().

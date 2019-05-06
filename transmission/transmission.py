@@ -613,21 +613,6 @@ class MetaSample(Sample):
             raise Exception("invalid method {}".format(fst_method))
 
 
-def beta_nonst(alpha, beta, a=0, b=1, n=1):
-    """
-    Draws instances of a random variable from a nonstandard beta distribution
-    over the interval [a, b]. By default returns standard beta variables.
-    Args:
-        alpha (float): The first beta shape parameter. A nonnegative float.
-        beta (float): The second beta shape parameter.
-        a (float): The beginning of the interval of the distribution.
-        b (float): The end of the interval of the distribution.
-        n (int): The number of observations to be drawn.
-    """
-
-    return np.random.beta(alpha, beta, n) * (b - a) + a
-
-
 def fst(Nm, tau, rho):
     """
     Theoretical Fst from Nm, tau, and rho.
@@ -721,10 +706,12 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
             )
     else:
         raise Exception("sigma must be tuple or float")
-    tau = beta_nonst(prior_params["tau"][0], prior_params["tau"][1],
-                     n=num_simulations)
-    rho = beta_nonst(prior_params["rho"][0], prior_params["rho"][1], a=0, b=2,
-                     n=num_simulations)
+    tau = np.random.beta(prior_params["tau"][0],
+                         prior_params["tau"][1],
+                         n=num_simulations)
+    rho = np.random.beta(prior_params["rho"][0],
+                         prior_params["rho"][1],
+                         n=num_simulations)
     params = np.array([sigma, tau, rho]).T
     simpartial = functools.partial(
         sim,
