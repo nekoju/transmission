@@ -35,3 +35,7 @@
 ## 0.0.5b
 
 - Got rid of beta_nonstandard().
+
+## 0.0.5c
+
+- Fixed beta to use 'size' rather than 'n'.

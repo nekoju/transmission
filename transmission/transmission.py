@@ -708,10 +708,10 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
         raise Exception("sigma must be tuple or float")
     tau = np.random.beta(prior_params["tau"][0],
                          prior_params["tau"][1],
-                         n=num_simulations)
+                         size=num_simulations)
     rho = np.random.beta(prior_params["rho"][0],
                          prior_params["rho"][1],
-                         n=num_simulations)
+                         size=num_simulations)
     params = np.array([sigma, tau, rho]).T
     simpartial = functools.partial(
         sim,

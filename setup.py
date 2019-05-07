@@ -7,7 +7,7 @@ import pypandoc
 pypandoc.convert_file('README.md', 'rst', outputfile='README.rst')
 setup(
     name='transmission',
-    version='0.0.5b',
+    version='0.0.5c',
     py_modules=['transmission'],
     description=('Tools for inferring symbiont transmission mode from'
                  'metagenomic data'),
