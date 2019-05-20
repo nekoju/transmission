@@ -1,0 +1,15 @@
+#!/bin/bash
+
+#PBS -l nodes=2:ppn=24:dc2,walltime=14:00:00:00,vmem=500gb
+#PBS -M mpjuers@indiana.edu
+#PBS -m abe
+#PBS -o /N/u/mpjuers/Carbonate/Projects/MixedTransmission/Misc/Batch/priors_s-0-0.1_t-1-1_r-10-10_1e6.o
+#PBS -e /N/u/mpjuers/Carbonate/Projects/MixedTransmission/Misc/Batch/priors_s-0-0.1_t-1-1_r-10-10_1e6.e
+
+module load singularity
+singularity exec --contain \
+    -B ~/Projects/MixedTransmission:/home/jovyan/work \
+    docker://mpjuers/transmission:v0.0.3 \
+    transmission-priorgen -n 12 -d 30 -t 1 -M 3 -s 1000000 -r 25 \
+    -p '{"sigma": (0, 0.1), "tau": (1, 1), "rho": (10, 10)}' \
+    --noprog --nc 24 /home/jovyan/work/priors_s-0-0.1_t-1-1_r-10-10_1e10.pickle
