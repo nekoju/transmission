@@ -17,7 +17,7 @@ For example:
 
 ```
 transmission-priorgen -n 10 -d 5 -M 2 -s 100 \
-    -p '{"sigma": (0, 0.1), "tau":(1, 1), "rho"(10, 10)}' \
+    -p '{"eta": (0, 0.1), "tau":(1, 1), "rho"(10, 10)}' \
     --h_opts '{"bias": False}' outfile.pickle
 ```
 

@@ -11,5 +11,5 @@ singularity exec --contain \
     -B ~/Projects/MixedTransmission:/home/jovyan/work \
     docker://mpjuers/transmission:v0.0.3 \
     transmission-priorgen -n 12 -d 30 -t 1 -M 3 -s 1000000 -r 25 \
-    -p '{"sigma": (0, 0.1), "tau": (1, 1), "rho": (10, 10)}' \
+    -p '{"eta": (0, 0.1), "tau": (1, 1), "rho": (10, 10)}' \
     --noprog --nc 24 /home/jovyan/work/priors_s-0-0.1_t-1-1_r-10-10_1e10.pickle

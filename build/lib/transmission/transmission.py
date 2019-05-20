@@ -40,14 +40,14 @@ class Abc(object):
     """
 
     def __init__(self, target, param, sumstat, tol=0.1, method="loclinear",
-                 transf={"tau": "logit", "rho": "logit", "sigma": None},
-                 logit_bounds={"tau": (0, 1), "rho": (0, 2), "sigma": (1, 1)},
+                 transf={"tau": "logit", "rho": "logit", "eta": None},
+                 logit_bounds={"tau": (0, 1), "rho": (0, 2), "eta": (1, 1)},
                  **kwargs):
         """
         target(np.ndarray): 0 x nstat array of calculated summary
             statistics from observed sample. If a structured array is provided,
             column names will be returned.
-        param (np.ndarray): num_iterations x 3 array of sigma, tau, rho values
+        param (np.ndarray): num_iterations x 3 array of eta, tau, rho values
             simulated from their prior distributions. If a structured array is
             provided, column names will be returned.
         sumstat(np.ndarray): num_iterations x num_simulations array of summary
@@ -62,7 +62,7 @@ class Abc(object):
         transf (str): A dictionary of parameter: transformation pairs to use
             for parameter values. Each may take "log", "logit", or None.
         logit_bounds (np.ndarray): A dictionary with elements "tau", "rho",
-            and "sigma" each representing a tuple of lower and upper bounds
+            and "eta" each representing a tuple of lower and upper bounds
             for logit transformation to use if transf="logit" is specified.
         **kwargs: Additional arguments for r function 'abc'. Must be formatted
             for passing to R as described in the documentation for rpy2.
@@ -644,7 +644,7 @@ def fst(Nm, tau, rho):
 
 def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
                 stats=("fst_mean", "fst_sd", "pi_h"),
-                prior_params={"sigma": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
+                prior_params={"eta": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
                 nsamp_populations=None, num_replicates=1, num_cores="auto",
                 prior_seed=None, average_reps=True, progress_bar=False,
                 h_opts={}, **kwargs):
@@ -675,9 +675,9 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
             standard deviation, or "pi_h", "pi_nei", or "pi_tajima". See
             Sample.pi() documentation for details.
         prior_params (dict): A dict containing tuples specifiying the prior
-            distribution parameters for sigma, tau, and rho. That is, the
+            distribution parameters for eta, tau, and rho. That is, the
             mutation rate multiplier, vertical transmission frequency, and
-            sex ratio. Optionally one may provide a scalar value for sigma to
+            sex ratio. Optionally one may provide a scalar value for eta to
             fix the mutation rate multiplier.
         num_replicates (int): Number of msprime replicates to run for each
             simulated parameter pair and the number of simulations in each
@@ -699,7 +699,7 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
             Sample.fst().
     """
 
-    # Number of output statistics plus parameters sigma, tau, and rho.
+    # Number of output statistics plus parameters eta, tau, and rho.
 
     populations = np.repeat(np.arange(num_populations), nchrom)
     population_config = tuple(ms.PopulationConfiguration(nchrom)
@@ -709,21 +709,21 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
                          else nsamp_populations)
     if prior_seed:
         np.random.seed(prior_seed)
-    if isinstance(prior_params["sigma"], float):
-        sigma = np.full((num_simulations, ), prior_params["sigma"])
-    elif isinstance(prior_params["sigma"], tuple):
-        sigma = np.random.normal(
-            prior_params["sigma"][0],
-            prior_params["sigma"][1],
+    if isinstance(prior_params["eta"], float):
+        eta = np.full((num_simulations, ), prior_params["eta"])
+    elif isinstance(prior_params["eta"], tuple):
+        eta = np.random.normal(
+            prior_params["eta"][0],
+            prior_params["eta"][1],
             num_simulations
             )
     else:
-        raise Exception("sigma must be tuple or float")
+        raise Exception("eta must be tuple or float")
     tau = beta_nonst(prior_params["tau"][0], prior_params["tau"][1],
                      n=num_simulations)
     rho = beta_nonst(prior_params["rho"][0], prior_params["rho"][1], a=0, b=2,
                      n=num_simulations)
-    params = np.array([sigma, tau, rho]).T
+    params = np.array([eta, tau, rho]).T
     simpartial = functools.partial(
         sim,
         host_theta=host_theta, host_Nm=host_Nm,
@@ -764,7 +764,7 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
     At top level for picklability (for multiprocessing).
 
     Args:
-        params (tuple): symbiont_theta, sigma, tau, rho for simulation.
+        params (tuple): symbiont_theta, eta, tau, rho for simulation.
         host_theta (float): Estimate of host theta (2*Ne*mu*L) for host.
         host_Nm (float): Estimate of host migration parameter (Ne*m).
         population_config (list): List of population configurations for
@@ -781,11 +781,11 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
             dictionary.
         **kwargs (): Extra arguments for msprime.simulate().
     """
-    sigma, tau, rho = params
+    eta, tau, rho = params
     A = tau ** 2 * (3 - 2 * tau) * (2 - rho) + rho
     num_populations = len(population_config)
     symbiont_Nm = np.true_divide(host_Nm * (1 + rho) ** 2, 4 * A)
-    symbiont_theta = np.true_divide(10 ** sigma * host_theta * (1 + rho) ** 2,
+    symbiont_theta = np.true_divide(10 ** eta * host_theta * (1 + rho) ** 2,
                                     4 * A)
     migration = np.full(
         (num_populations, num_populations),
@@ -837,7 +837,7 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
             out[:, statidx] = fst_summ["mean"]
         elif stat == "fst_sd":
             out[:, statidx] = fst_summ["sd"]
-    out[:, -3] = sigma
+    out[:, -3] = eta
     out[:, -2] = tau
     out[:, -1] = rho
     return out if not average_reps else out[0]
@@ -902,7 +902,7 @@ def main():
         nchrom=10, num_populations=10,
         host_theta=host_theta, host_Nm=host_Nm,
         num_simulations=100, num_replicates=10,
-        prior_params={"sigma": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
+        prior_params={"eta": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
         num_cores="auto",
         prior_seed=prior_seed,
         average_reps=True,
@@ -912,7 +912,7 @@ def main():
         )
     r_abc = Abc(
         target=test_target[0:3],
-        param=test_simulation[["sigma", "tau", "rho"]],
+        param=test_simulation[["eta", "tau", "rho"]],
         sumstat=test_simulation[["fst_mean", "fst_sd", "pi_h"]]
         )
     print(r_abc.summary())

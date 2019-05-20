@@ -45,10 +45,10 @@ from transmission import ms_simulate
               help='The number of replicates for each simulation.',
               show_default=True)
 @click.option('-p', '--params', 'prior_params',
-              default='{"sigma": (0, 0.1), "tau": (1, 1), "rho": (1, 1)}',
+              default='{"eta": (0, 0.1), "tau": (1, 1), "rho": (1, 1)}',
               type=str, help='A dict formatted as a string containing'
-              ' hyperparameters for distributions of sigma, tau, and rho'
-              ' The distribution of sigma is normal (mean, sd),'
+              ' hyperparameters for distributions of eta, tau, and rho'
+              ' The distribution of eta is normal (mean, sd),'
               ' while tau and rho are beta with pararmeters (a, b). rho uses'
               ' a nonstandard beta distribution with support (0, 2).',
               show_default=True)
