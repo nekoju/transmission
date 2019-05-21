@@ -753,7 +753,7 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
     At top level for picklability (for multiprocessing).
 
     Args:
-        params (tuple): symbiont_theta, eta, tau, rho for simulation.
+        params (tuple): eta, tau, rho for simulation.
         host_theta (float): Estimate of host theta (2*Ne*mu*L) for host.
         host_Nm (float): Estimate of host migration parameter (Ne*m).
         population_config (list): List of population configurations for

@@ -39,3 +39,7 @@
 ## 0.0.5c
 
 - Fixed beta to use 'size' rather than 'n'.
+
+## 0.0.6
+
+- Added demos.
