@@ -133,3 +133,4 @@ transmission.egg-info/*
 dist/*
 README.rst
 .idea
+Session.vim

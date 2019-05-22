@@ -760,7 +760,9 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
             msprime.
         populations (np.ndarray): A nchrom np.ndarray indicating to which
             population each chromosome belongs.
-        stats (tuple): The requested statistics to be calculated.
+        stats (tuple): The requested statistics to be calculated. May contain
+            any of "fst_mean", "fst_sd", "pi_h", "pi_nei", "pi_tajima",
+            "theta_w", or "num_sites".
         average_reps (bool): Whether to return averaged replicates. False will
             return raw summaries.
         num_replicates (int): Number of msprime replicates to run for each
@@ -822,6 +824,14 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
                                    treesample.pi(pi_method="tajima", **kwargs)
                                    )
                                )
+        elif stat == "num_sites":
+            out[:, statidx] = (treesample.segsites()
+                              if not average_reps
+                              else np.mean(treesample.segsites()))
+        elif stat == "theta_w":
+            out[:, statidx] = (treesample.theta_w()
+                               if not average_reps
+                               else np.mean(treesample.theta_w()))
         elif stat == "fst_mean":
             out[:, statidx] = fst_summ["mean"]
         elif stat == "fst_sd":

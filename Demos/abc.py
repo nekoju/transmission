@@ -50,7 +50,7 @@ prior_seed = 3
 random_seed = 3
 host_theta = 1.5
 npop = 10
-nchrom = 10
+nchrom = 24
 host_Nm = 0.56  # host F_(ST-mt) = 0.64
 num_replicates = 24
 
@@ -64,13 +64,15 @@ simulated_target = txmn.sim(
     host_Nm=host_Nm,
     population_config=population_config,
     populations=populations,
-    stats=("fst_mean", "fst_sd", "pi_h"),
+    stats=("fst_mean", "fst_sd", "pi_h", "num_sites"),
     num_replicates=num_replicates,
     random_seed=random_seed
 )
                           
-
-# %%
-simulated_target
+simulated_target.dtype = np.dtype({"names": ("fst_mean", "fst_sd", "pi_h",
+                                             "num_sites", "eta", "tau", "rho"),
+                                   "formats": ['f8' for _ in range(7)]})
+target_df = pd.DataFrame.from_records(simulated_target)
+target_df
 
 # %%
