@@ -35,15 +35,15 @@ from tqdm import tqdm
 
 class Abc(object):
 
-    """
+    '''
     Interface to R package abc for estimating tau and rho posteriors.
-    """
+    '''
 
     def __init__(self, target, param, sumstat, tol=0.1, method="loclinear",
                  transf={"tau": "logit", "rho": "logit", "eta": None},
                  logit_bounds={"tau": (0, 1), "rho": (0, 1), "eta": (1, 1)},
                  **kwargs):
-        """
+        '''
         target(np.ndarray): 0 x nstat array of calculated summary
             statistics from observed sample. If a structured array is provided,
             column names will be returned.
@@ -66,7 +66,7 @@ class Abc(object):
             for logit transformation to use if transf="logit" is specified.
         **kwargs: Additional arguments for r function 'abc'. Must be formatted
             for passing to R as described in the documentation for rpy2.
-        """
+        '''
 
         if tol * sumstat.shape[0] <= 1:
             raise ValueError("tol * sumstat.shape[0] must be >= 2")
@@ -88,6 +88,7 @@ class Abc(object):
         numpy2ri.activate()
         importr("abc")
         importr("base")
+        breakpoint()
         self.abc = robjects.r.abc(
             target=target,
             param=Abc.rmatrix(param),
@@ -140,13 +141,13 @@ class Abc(object):
 
     @staticmethod
     def rmatrix(rec_array):
-        """
+        '''
         Return an r matrix, preserving column and row names, from a
             numpy record array.
 
         Args:
             rec_array (np.ndarray): A n X m numpy structured array.
-        """
+        '''
 
         if isinstance(rec_array, np.recarray):
             # Extract data from record array, i.e. make into standard
@@ -184,7 +185,7 @@ class Abc(object):
 
 class Sample(object):
 
-    """
+    '''
     Coalescent simulation output representing a population class and methods.
     Input argument should be a np.ndarray with 2 dimensions detailed
     in __init__ or an msprime.TreeSequence object.
@@ -195,10 +196,10 @@ class Sample(object):
         type: the input type, either "TreeSequence" or "ndarray"
         popdata: the original object passed to instantiate the class
 
-    """
+    '''
 
     def __init__(self, popdata):
-        """
+        '''
         Args:
             popdata (np.ndarray OR msprime.TreeSequence): A 2D np.ndarray
                 with individual chromosomes
@@ -211,7 +212,7 @@ class Sample(object):
                 argument and accepts such an iterable  while returning
                 a tuple of "TreeSequence" or "np.ndarray"
                 objects.
-        """
+        '''
 
         # Make self.popdata iterable for consistency with multiple replicates.
         if isinstance(popdata, collections.abc.Iterator):
@@ -242,10 +243,10 @@ class Sample(object):
             )
 
     def gtmatrix(self):
-        """
+        '''
         Sample.gtmatrix() returns a
         self.nchrom X self.sites matrix of sample genotypes.
-        """
+        '''
         out = []
         for rep in self.popdata:
             if self.type == "TreeSequence":
@@ -256,7 +257,7 @@ class Sample(object):
 
     def h(self, average=False, bias=True,
           by_population=False):
-        """
+        '''
         Calculate heterozygosity over sites in sample.
         Returns a list of np.ndarrays of dimensions npop X segsites,
         or, if average==True, a npop X num_replicates np.ndarray.
@@ -266,7 +267,7 @@ class Sample(object):
             by_population (bool): whether to calculate heterozygosity by
                 population, or alternatively, as a metapopulation (H_T).
             h_opts (dict): Extra arguments for self.h().
-        """
+        '''
 
         # Check if multiple populations are provided or desired
         populations = (self.populations
@@ -301,7 +302,7 @@ class Sample(object):
             return np.array(out).T
 
     def num_mutants(self, populations, popdata=None):
-        """
+        '''
         Returns the number of mutant alleles observed at each site.
         Used by other methods.
 
@@ -310,7 +311,7 @@ class Sample(object):
                 which population each chromosome belongs.
             popdata (TreeSequence object or np.ndarray): Single replicate for
                 which to compute num_mutants.
-        """
+        '''
         # Allows computation of single replicate snps.
         popdata = (self.popdata
                    if not popdata
@@ -338,7 +339,7 @@ class Sample(object):
         return tuple(out)
 
     def pi(self, pi_method="h", h_opts={}, **kwargs):
-        """
+        '''
         Calculates different metrics of nucleotide diversity.
 
         Args:
@@ -356,7 +357,7 @@ class Sample(object):
                     namely 'bias'.
             h_opts (dict): Extra arguments for self.h() in the form of a
                 kwargs dictionary.
-        """
+        '''
 
         out = np.zeros((len(self.popdata), ))
         for repidx, rep in enumerate(self.popdata):
@@ -414,7 +415,7 @@ class Sample(object):
         return out if out.size > 1 else out[0]
 
     def polymorphic(self, threshold=0, output=("num", "which")):
-        """
+        '''
         Returns polymorphism attributes as dict or value.
         Attributes are number of polymorphic sites and index positions of
         polymorphic sites.
@@ -428,7 +429,7 @@ class Sample(object):
                 or both. Possible values are "num" returning number of sites,
                 "which" returning indices,
                 or a tuple of both (default) returning a dict of both.
-        """
+        '''
         valid_outputs = ("which", "num")
         snp_array = np.zeros(
             (self.npop, self.num_replicates), dtype=int
@@ -464,7 +465,7 @@ class Sample(object):
         return out[0] if out.size == 1 else out
 
     def theta_w(self, by_population=False, threshold=0):
-        """
+        '''
         Calculate the Watterson estimator.
         
         Args:
@@ -476,7 +477,7 @@ class Sample(object):
         Returns:
             If by_population: npop X num_replicates np.ndarray
             If not by_population: 1 X num_replicates np.ndarray
-        """
+        '''
         # Check if multiple populations are provided or desired
         populations = (self.populations
                        if by_population
@@ -493,7 +494,7 @@ class Sample(object):
 
 class MetaSample(Sample):
 
-    """
+    '''
 
     Class representing a metapopulation sample and associated methods.
 
@@ -508,10 +509,10 @@ class MetaSample(Sample):
         populations (np.ndarray): A 1-dimensional np.ndarray of ints
             specifying to which population each sample belongs.
 
-    """
+    '''
 
     def __init__(self, popdata, populations, force_meta=False):
-        """
+        '''
         Args:
             popdata (np.ndarray OR msprime.TreeSequence): A 2D np.ndarray
                 with individual chromosomes
@@ -528,7 +529,7 @@ class MetaSample(Sample):
                 which population each sample belongs.
             force_meta (bool): Whether to force a single population to become
                 a metapopulation rather than coercion to Population class.
-        """
+        '''
         super(MetaSample, self).__init__(popdata)
         if (len(set(populations)) == 1
                 or (self.type == "TreeSequence"
@@ -551,7 +552,7 @@ class MetaSample(Sample):
     def fst(self, fst_method="gst",
             summary="mean", average_reps=False, average_sites=True,
             h_opts={}):
-        """
+        '''
         Returns specified fst statistic.
         Args:
             fst_method (str): Only "gst" is supported right now. This returns
@@ -568,7 +569,7 @@ class MetaSample(Sample):
                 array. Redundant if not average_sites.
             h_opts (dict): Extra arguments for Sample.h(), in the form of a
                 kwargs dictionary.
-        """
+        '''
         if isinstance(summary, str):
             summary = (summary, )
         if fst_method == "gst":
@@ -614,14 +615,14 @@ class MetaSample(Sample):
 
 
 def fst(Nm, tau, rho):
-    """
+    '''
     Theoretical Fst from Nm, tau, and rho.
 
     Args:
         Nm (float): The migration parameter Ne * m.
         tau (float): The rate of vertical transmission.
         rho (float): The proportion of the population that is female.
-    """
+    '''
 
     A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
     B = 2 * rho * (1 - rho) * (A + rho)
@@ -635,7 +636,7 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
                 nsamp_populations=None, num_replicates=1, num_cores="auto",
                 prior_seed=None, average_reps=True, progress_bar=False,
                 h_opts={}, **kwargs):
-    """
+    '''
     Generate random sample summary using msprime for the specified prior
     distributions of tau (vertical transmission rate) and rho (sex ratio).
 
@@ -684,7 +685,7 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
             dictionary.
         **kwargs (): Extra arguments for ms.simulate(), Sample.pi(), and
             Sample.fst().
-    """
+    '''
 
     # Number of output statistics plus parameters eta, tau, and rho.
 
@@ -747,7 +748,7 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
 
 def sim(params, host_theta, host_Nm, population_config, populations, stats,
         num_replicates, average_reps=True, h_opts={}, **kwargs):
-    """
+    '''
     Runs actual simulation with ms. Intended as helper for ms_simulate().
 
     At top level for picklability (for multiprocessing).
@@ -771,7 +772,7 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
         h_opts (dict): Extra arguments for Sample.h(), formatted as kwargs
             dictionary.
         **kwargs (): Extra arguments for msprime.simulate().
-    """
+    '''
     eta, tau, rho = params
     A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
     B = 2 * rho * (1 - rho) * (A + rho)
