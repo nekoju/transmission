@@ -34,6 +34,10 @@ import numpy as np
 import pandas as pd
 
 %matplotlib inline
+
+%reload_ext autoreload
+%autoreload 2
+%aimport transmission
 ```
 
 
@@ -54,10 +58,10 @@ rho = 0.55  # The fraction of the population that is female.
 
 prior_seed = 3
 random_seed = 3
-host_theta = 1.5      # Estimated from the host mitochondria.
-npop = 10             # Number of populations
+host_theta = 1        # Estimated from the host mitochondria.
+npop = 30             # Number of populations
 nchrom = 24           # Number of chromosomes sampled from each population.
-host_Nm = 0.56        # host F_(ST-mt) = 0.64
+host_Nm = 2
 num_replicates = 30
 
 # Create populations using msprime API
@@ -67,21 +71,23 @@ population_config = [ms.PopulationConfiguration(nchrom)
 # chromosome, 0, 1, 2, ...
 populations = np.repeat(range(npop), nchrom)
 
+# The following takes a minute or so.
 simulated_target = txmn.sim(
     (eta, tau, rho),
     host_theta=host_theta,
     host_Nm=host_Nm,
     population_config=population_config,
     populations=populations,
-    stats=("fst_mean", "fst_sd", "pi_h", "num_sites"),
+    stats=("fst_mean", "fst_sd", "pi_h"),
     num_replicates=num_replicates,
     random_seed=random_seed
 )
                           
-simulated_target.dtype = np.dtype({"names": ("fst_mean", "fst_sd", "pi_h",
-                                             "num_sites", "eta", "tau", "rho"),
-                                   "formats": ['f8' for _ in range(7)]})
-target_df = pd.DataFrame.from_records(simulated_target)
+target_df = pd.DataFrame.from_records(
+    np.array(simulated_target, dtype={"names": ("fst_mean", "fst_sd", "pi_h",
+                                                "eta", "tau", "rho"),
+                                      "formats": ['f8' for _ in range(6)]})
+)
 target_df
 ```
 
@@ -92,7 +98,30 @@ according to whatever priors you wish.
 
 ```python
 with open('../Data/priors_s-0-0.1_t-1-1_r-10-10_1e6.pickle', 'rb') as file:
-    priors = pickle.load(file)
+    priors_array = pickle.load(file)
+priors = pd.DataFrame.from_records(priors_array)
+priors.head()  # Note: sigma should be eta. This has been corrected in
+               # the software.
+priors.rename(columns={'sigma': 'eta'}, inplace=True)
+
+# The below is a necessary evil at this point, until I have better Pandas
+# integration.
+def rmfield( a, *fieldnames_to_remove ):
+    return a[ [ name for name in a.dtype.names
+               if name not in fieldnames_to_remove ] ]
+
+priors.head()
+
+abc_out = txmn.Abc(
+    target=simulated_target[0:3],  # Get only the summary statistics from
+                                   # target.
+    # For now, Transmission isn't made to work directly with DataFrames,
+    # instead, they must be changed to record arrays.
+    param=rmfield(priors[['eta', 'tau', 'rho']].to_records(), 'index'),
+    sumstat=rmfield(
+        priors[['fst_mean', 'fst_sd', 'pi_h']].to_records(), 'index'
+    )
+)
 ```
 
 ```python
