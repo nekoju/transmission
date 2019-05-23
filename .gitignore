@@ -134,3 +134,4 @@ dist/*
 README.rst
 .idea
 Session.vim
+__doc__
