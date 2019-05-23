@@ -88,7 +88,6 @@ class Abc(object):
         numpy2ri.activate()
         importr("abc")
         importr("base")
-        breakpoint()
         self.abc = robjects.r.abc(
             target=target,
             param=Abc.rmatrix(param),
@@ -149,14 +148,14 @@ class Abc(object):
             rec_array (np.ndarray): A n X m numpy structured array.
         '''
 
-        if isinstance(rec_array, np.recarray):
+        i
+        f isinstance(rec_array, np.recarray):
             # Extract data from record array, i.e. make into standard
             # ndarray.
             rec_array_in = (
                 rec_array.view(np.float64)
                 .reshape(
-                    (rec_array.shape + (-1,)
-                     if rec_array.shape
+                    (rec_array.shape + (-1,) if rec_array.shape
                      else (1, -1))
                     )
                 )

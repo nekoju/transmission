@@ -40,7 +40,7 @@
 
 - Fixed beta to use 'size' rather than 'n'.
 
-## 0.0.6a
+## 0.0.6
 
 - Added demos.
 - Added num_sites, theta_w to sim().

@@ -21,6 +21,9 @@
 #
 
 
+# %% [markdown]
+# This is a live document. Install Jupytext and open as a Jupyter notebook.
+
 # %%
 from __future__ import print_function, division
 
@@ -28,15 +31,22 @@ import itertools
 import pickle
 
 import msprime as ms
+import matplotlib.pyplot as plt
 import transmission as txmn
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 # %matplotlib inline
 
+# Authmatically reload transmission. Remove after debugging.
 # %reload_ext autoreload
 # %autoreload 2
 # %aimport transmission
+
+# Show all output, not just last command.
+from IPython.core.interactiveshell import InteractiveShell
+InteractiveShell.ast_node_interactivity = "all"
 
 
 # %% markdown [markdown]
@@ -68,7 +78,8 @@ population_config = [ms.PopulationConfiguration(nchrom)
 # chromosome, 0, 1, 2, ...
 populations = np.repeat(range(npop), nchrom)
 
-# The following takes a minute or so.
+# The following takes a minute or so. We are generating a target using the
+# above parameters.
 simulated_target = txmn.sim(
     (eta, tau, rho),
     host_theta=host_theta,
@@ -80,11 +91,9 @@ simulated_target = txmn.sim(
     random_seed=random_seed
 )
                           
-target_df = pd.DataFrame.from_records(
-    np.array(simulated_target, dtype={"names": ("fst_mean", "fst_sd", "pi_h",
-                                                "eta", "tau", "rho"),
-                                      "formats": ['f8' for _ in range(6)]})
-)
+target_df = pd.DataFrame(simulated_target.reshape((1, 6)), 
+                         columns=("fst_mean", "fst_sd", "pi_h",
+                                  "eta", "tau", "rho"))
 target_df
 
 # %% [markdown]
@@ -101,23 +110,54 @@ priors.head()  # Note: sigma should be eta. This has been corrected in
                # the software.
 priors.rename(columns={'sigma': 'eta'}, inplace=True)
 
-# The below is a necessary evil at this point, until I have better Pandas
-# integration.
-def rmfield( a, *fieldnames_to_remove ):
-    return a[ [ name for name in a.dtype.names
-               if name not in fieldnames_to_remove ] ]
-
-priors.head()
-
 abc_out = txmn.Abc(
     target=simulated_target[0:3],  # Get only the summary statistics from
                                    # target.
     # For now, Transmission isn't made to work directly with DataFrames,
     # instead, they must be changed to record arrays.
-    param=rmfield(priors[['eta', 'tau', 'rho']].to_records(), 'index'),
-    sumstat=rmfield(
-        priors[['fst_mean', 'fst_sd', 'pi_h']].to_records(), 'index'
-    )
-)
+    param = priors[['eta', 'tau', 'rho']].to_records(index=False),
+    sumstat = priors[['fst_mean', 'fst_sd', 'pi_h']].to_records(index=False)
+)  
+
+# %% [markdown]
+# We can check out some summary statistics for our model.
 
 # %%
+print(abc_out.summary())
+
+# %%
+density_fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(10, 8))
+
+_ = ax1.set_xlim(-1, 1)
+_ = x_eta = np.linspace(stats.norm.ppf(0.01, scale=0.1),
+                        stats.norm.ppf(0.99, scale=0.1),
+                        100)
+_ = eta_posterior_density = stats.gaussian_kde(abc_out.adj_values['eta'])
+_ = ax1.plot(x_eta, stats.norm.pdf(x_eta, scale=0.1), 'r-')
+_ = ax1.plot(x_eta, eta_posterior_density(x_eta), 'b-')
+_ = ax1.set(xlabel=r'$\eta$', ylabel='Density')
+
+_ = ax2.set_xlim(0, 1)
+_ = x_tau = np.linspace(stats.beta.ppf(0.01, a=1, b=1),
+                        stats.beta.ppf(0.99, a=1, b=1),
+                        100)
+_ = tau_posterior_density = stats.gaussian_kde(abc_out.adj_values['tau'])
+_ = ax2.plot(x_tau, stats.beta.pdf(x_tau, a=1, b=1), 'r-')
+_ = ax2.plot(x_tau, tau_posterior_density(x_tau), 'b-')
+_ = ax2.set(xlabel=r'$\tau$')
+
+_ = ax3.set_xlim(0, 1)
+_ = x_rho = np.linspace(stats.beta.ppf(0.01, a=10, b=10),
+                        stats.beta.ppf(0.99, a=10, b=10),
+                        100)
+_ = rho_posterior_density = stats.gaussian_kde(abc_out.adj_values['rho'])
+_ = ax3.plot(x_rho, stats.beta.pdf(x_rho, a=10, b=10), 'r-')
+_ = ax3.plot(x_rho, rho_posterior_density(x_rho), 'b-')
+_ = ax3.set(xlabel=r'$\rho$')
+
+
+# %%
+# Run as script to save images.
+if __name__ == '__main__':
+    fig.savefig('Figures/density.pdf')
+    fig.savefig('Figures/density.png')
