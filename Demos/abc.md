@@ -5,7 +5,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.1'
-      jupytext_version: 1.1.2
+      jupytext_version: 1.1.3
   kernelspec:
     display_name: transmission
     language: python

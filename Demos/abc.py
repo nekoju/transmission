@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.2'
-#       jupytext_version: 1.1.2
+#       jupytext_version: 1.1.3
 #   kernelspec:
 #     display_name: transmission
 #     language: python

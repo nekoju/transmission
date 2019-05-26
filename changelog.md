@@ -44,3 +44,7 @@
 
 - Added demos.
 - Added num_sites, theta_w to sim().
+
+## 0.0.6a
+
+- Fixed a small syntax error.

@@ -148,8 +148,7 @@ class Abc(object):
             rec_array (np.ndarray): A n X m numpy structured array.
         '''
 
-        i
-        f isinstance(rec_array, np.recarray):
+        if isinstance(rec_array, np.recarray):
             # Extract data from record array, i.e. make into standard
             # ndarray.
             rec_array_in = (
@@ -466,7 +465,7 @@ class Sample(object):
     def theta_w(self, by_population=False, threshold=0):
         '''
         Calculate the Watterson estimator.
-        
+
         Args:
             by_population (bool): Whether to compute theta_w per-population.
             threshold (int): Sites with threshold or fewer derived alleles will
@@ -826,8 +825,8 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
                                )
         elif stat == "num_sites":
             out[:, statidx] = (treesample.segsites()
-                              if not average_reps
-                              else np.mean(treesample.segsites()))
+                               if not average_reps
+                               else np.mean(treesample.segsites()))
         elif stat == "theta_w":
             out[:, statidx] = (treesample.theta_w()
                                if not average_reps
