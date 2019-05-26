@@ -1,9 +1,7 @@
----
-subtitle: A tool for inferring symbiont transmission mode from metagenomic data
-title: transmission
----
+# Transmission: A tool for inferring symbiont transmission mode from metagenomic data
 
-# Generating simulated summary statistics
+
+## Generating simulated summary statistics
 
 This is a big job and I find it helpful to farm this job out to a computing
 cluster. The main program is written for interactive use in a notebook or shell,
@@ -11,7 +9,7 @@ so to that end, the cli tool `transmission-priorgen` is included with
 transmission. Use `transmission-priorgen --help` for details on available
 options. 
 
-## Natively
+### Natively
 
 For example:
 
@@ -21,7 +19,7 @@ transmission-priorgen -n 10 -d 5 -M 2 -s 100 \
     --h_opts '{"bias": False}' outfile.pickle
 ```
 
-## Using the Docker image
+### Using the Docker image
 
 ```
 docker run --rm -v </path/to/host/directory>:/home/jovyan/work \

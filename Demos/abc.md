@@ -167,14 +167,7 @@ _ = ax3.plot(x_rho, stats.beta.pdf(x_rho, a=10, b=10), 'r-')
 _ = ax3.plot(x_rho, rho_posterior_density(x_rho), 'b-')
 _ = ax3.set(xlabel=r'$\rho$')
 
-density_fig.subplots_adjust(wspace=0.25)
-```
 
-```python node_exists=false node_name="9550e88964fa4c7d8c5c548d03784a6d"
-density_fig.savefig('Figures/density.png')
 density_fig.savefig('Figures/density.pdf')
-```
-
-```python
-
+density_fig.savefig('Figures/density.png')
 ```

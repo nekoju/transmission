@@ -171,4 +171,5 @@ density_fig.subplots_adjust(wspace=0.25)
 density_fig.savefig("Figures/density.png")
 density_fig.savefig("Figures/density.pdf")
 
-# %%
+density_fig.savefig('Figures/density.pdf')
+density_fig.savefig('Figures/density.png')
