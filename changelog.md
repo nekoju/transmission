@@ -48,3 +48,8 @@
 ## 0.0.6a
 
 - Fixed a small syntax error.
+
+
+# 0.0.7
+
+

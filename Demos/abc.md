@@ -5,7 +5,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.1'
-      jupytext_version: 1.1.3
+      jupytext_version: 1.1.2
   kernelspec:
     display_name: transmission
     language: python
@@ -47,6 +47,10 @@ from scipy import stats
 # Show all output, not just last command.
 from IPython.core.interactiveshell import InteractiveShell
 InteractiveShell.ast_node_interactivity = "all"
+
+#pragma nodebook off
+%load_ext nodebook.ipython
+%nodebook disk abc
 ```
 
 
@@ -158,11 +162,10 @@ _ = ax3.plot(x_rho, stats.beta.pdf(x_rho, a=10, b=10), 'r-')
 _ = ax3.plot(x_rho, rho_posterior_density(x_rho), 'b-')
 _ = ax3.set(xlabel=r'$\rho$')
 
+fig.adjust(wspace=0.5)
+
 ```
 
 ```python
-# Run as script to save images.
-if __name__ == '__main__':
-    fig.savefig('Figures/density.pdf')
-    fig.savefig('Figures/density.png')
+
 ```

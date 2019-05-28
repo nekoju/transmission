@@ -136,3 +136,5 @@ README.rst
 Session.vim
 __doc__
 Demos/Figures
+Demos/Cache
+**/*.tar*
