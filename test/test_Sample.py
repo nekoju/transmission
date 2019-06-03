@@ -180,3 +180,15 @@ def test_h_average_two_reps(bias, expected, double_replicate):
 def test_theta_w_two_reps(threshold, expected, double_replicate):
     out = np.isclose(double_replicate.theta_w(threshold=threshold), expected)
     assert out.all()
+
+
+@pytest.mark.parametrize(
+    "method, expected",
+    [
+        ("tajima", np.array([1.714285714, 2.571428571])),
+        ("nei", np.array([0.75, 1.125])),
+    ]
+)
+def test_pi_two_reps(method, expected, double_replicate):
+    out = np.isclose(double_replicate.pi(method=method), expected)
+    assert out.all()
