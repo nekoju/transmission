@@ -35,15 +35,22 @@ from tqdm import tqdm
 
 class Abc(object):
 
-    '''
+    """
     Interface to R package abc for estimating tau and rho posteriors.
-    '''
+    """
 
-    def __init__(self, target, param, sumstat, tol=0.1, method="loclinear",
-                 transf={"tau": "logit", "rho": "logit", "eta": None},
-                 logit_bounds={"tau": (0, 1), "rho": (0, 1), "eta": (1, 1)},
-                 **kwargs):
-        '''
+    def __init__(
+        self,
+        target,
+        param,
+        sumstat,
+        tol=0.1,
+        method="loclinear",
+        transf={"tau": "logit", "rho": "logit", "eta": None},
+        logit_bounds={"tau": (0, 1), "rho": (0, 1), "eta": (1, 1)},
+        **kwargs
+    ):
+        """
         target(np.ndarray): 0 x nstat array of calculated summary
             statistics from observed sample. If a structured array is provided,
             column names will be returned.
@@ -66,16 +73,15 @@ class Abc(object):
             for logit transformation to use if transf="logit" is specified.
         **kwargs: Additional arguments for r function 'abc'. Must be formatted
             for passing to R as described in the documentation for rpy2.
-        '''
+        """
 
         if tol * sumstat.shape[0] <= 1:
             raise ValueError("tol * sumstat.shape[0] must be >= 2")
-        logit_bounds_matrix = (np.array([logit_bounds[x]
-                                         for x in param.dtype.names])
-                               .view(type=np.ndarray)
-                               .reshape((len(param.dtype.names), -1)
-                                        )
-                               )
+        logit_bounds_matrix = (
+            np.array([logit_bounds[x] for x in param.dtype.names])
+            .view(type=np.ndarray)
+            .reshape((len(param.dtype.names), -1))
+        )
         # Change transformation from None to "none" for R.
         for key, value in transf.items():
             if not value:
@@ -94,31 +100,32 @@ class Abc(object):
             sumstat=Abc.rmatrix(sumstat),
             tol=vectors.FloatVector([tol]),
             method=vectors.StrVector([method]),
-            transf=(vectors.StrVector(["none"]) if not transf
-                    else vectors.StrVector(transf_list)),
+            transf=(
+                vectors.StrVector(["none"])
+                if not transf
+                else vectors.StrVector(transf_list)
+            ),
             logit_bounds=Abc.rmatrix(logit_bounds_matrix),
             **kwargs
-            )
+        )
         if method != "rejection":
             self.adj_values = np.core.records.fromarrays(
                 np.array(self.abc.rx2("adj.values")).T, names=param.dtype.names
-                )
+            )
             self.weights = np.array(self.abc.rx2("weights"))
             self.residuals = np.array(self.abc.rx2("residuals"))
         if method == "neuralnet":
             self.lambda_0 = np.array(self.abc.rx2("lambda"))
         if self.abc.rx2("na.action") != NULL:
-            self.na_action = robjects.vectors.BoolVector(
-                self.abc.rx2("na.action")
-                )
+            self.na_action = robjects.vectors.BoolVector(self.abc.rx2("na.action"))
         if not self.abc.rx2("region") != NULL:
             self.region = robjects.vectors.BoolVector(self.abc.rx2("region"))
         self.unadj_values = np.core.records.fromarrays(
             np.array(self.abc.rx2("unadj.values")).T, names=param.dtype.names
-            )
+        )
         self.ss = np.core.records.fromarrays(
             np.array(self.abc.rx2("ss")).T, names=sumstat.dtype.names
-            )
+        )
         self.dist = np.array(self.abc.rx2("dist"))
         self.call = self.abc.rx2("call")
         self.transf = np.array(self.abc.rx2("transf"))
@@ -129,10 +136,10 @@ class Abc(object):
         self.numstat = np.array(self.abc.rx2("numstat"))
         self.aic = np.array(self.abc.rx2("aic"))
         self.bic = np.array(self.abc.rx2("bic"))
-        self.names = {"paramater_names": self.abc.rx("names")
-                      .rx2("parameter.names"),
-                      "statistics_names": self.abc.rx("names")
-                      .rx2("statistics.names")}
+        self.names = {
+            "paramater_names": self.abc.rx("names").rx2("parameter.names"),
+            "statistics_names": self.abc.rx("names").rx2("statistics.names"),
+        }
         numpy2ri.deactivate()
 
     def summary(self):
@@ -140,50 +147,49 @@ class Abc(object):
 
     @staticmethod
     def rmatrix(rec_array):
-        '''
+        """
         Return an r matrix, preserving column and row names, from a
             numpy record array.
 
         Args:
             rec_array (np.ndarray): A n X m numpy structured array.
-        '''
+        """
 
         if isinstance(rec_array, np.recarray):
             # Extract data from record array, i.e. make into standard
             # ndarray.
-            rec_array_in = (
-                rec_array.view(np.float64)
-                .reshape(
-                    (rec_array.shape + (-1,) if rec_array.shape
-                     else (1, -1))
-                    )
-                )
+            rec_array_in = rec_array.view(np.float64).reshape(
+                (rec_array.shape + (-1,) if rec_array.shape else (1, -1))
+            )
         else:
             rec_array_in = rec_array
         if rec_array.shape:
             out = robjects.r.matrix(
-                rec_array_in, nrow=rec_array.shape[0],
-                ncol=(len(rec_array.dtype.names)
-                      if rec_array.dtype.names
-                      else rec_array.shape[1]),
+                rec_array_in,
+                nrow=rec_array.shape[0],
+                ncol=(
+                    len(rec_array.dtype.names)
+                    if rec_array.dtype.names
+                    else rec_array.shape[1]
+                ),
                 dimnames=robjects.r.list(
                     NULL,
-                    (vectors.StrVector(rec_array.dtype.names)
-                     if rec_array.dtype.names
-                     else NULL)
-                    )
-                )
+                    (
+                        vectors.StrVector(rec_array.dtype.names)
+                        if rec_array.dtype.names
+                        else NULL
+                    ),
+                ),
+            )
         else:
             out = robjects.vectors.FloatVector(rec_array_in)
-            out.names = robjects.vectors.StrVector(
-                rec_array.dtype.names
-                )
+            out.names = robjects.vectors.StrVector(rec_array.dtype.names)
         return out
 
 
 class Sample(object):
 
-    '''
+    """
     Coalescent simulation output representing a population class and methods.
     Input argument should be a np.ndarray with 2 dimensions detailed
     in __init__ or an msprime.TreeSequence object.
@@ -194,10 +200,10 @@ class Sample(object):
         type: the input type, either "TreeSequence" or "ndarray"
         popdata: the original object passed to instantiate the class
 
-    '''
+    """
 
     def __init__(self, popdata):
-        '''
+        """
         Args:
             popdata (np.ndarray OR msprime.TreeSequence): A 2D np.ndarray
                 with individual chromosomes
@@ -210,15 +216,15 @@ class Sample(object):
                 argument and accepts such an iterable  while returning
                 a tuple of "TreeSequence" or "np.ndarray"
                 objects.
-        '''
+        """
 
         # Make self.popdata iterable for consistency with multiple replicates.
         if isinstance(popdata, collections.abc.Iterator):
             self.popdata = tuple(popdata)
-        elif (isinstance(popdata, list) or isinstance(popdata, tuple)):
+        elif isinstance(popdata, list) or isinstance(popdata, tuple):
             self.popdata = popdata
         else:
-            self.popdata = tuple(popdata for _ in (0, ))
+            self.popdata = tuple(popdata for _ in (0,))
         if type(self.popdata[0]).__name__ == "TreeSequence":
             self.nchrom = self.popdata[0].num_samples
             self.type = "TreeSequence"
@@ -234,17 +240,15 @@ class Sample(object):
         print(
             "a {reps} replicate {nchrom} chromosome sample with "
             "{segsites} segregating sites".format(
-                nchrom=self.nchrom,
-                segsites=self.segsites(),
-                reps=len(self.popdata)
-                )
+                nchrom=self.nchrom, segsites=self.segsites(), reps=len(self.popdata)
             )
+        )
 
     def gtmatrix(self):
-        '''
+        """
         Sample.gtmatrix() returns a
         self.nchrom X self.sites matrix of sample genotypes.
-        '''
+        """
         out = []
         for rep in self.popdata:
             if self.type == "TreeSequence":
@@ -253,9 +257,8 @@ class Sample(object):
                 out.append(rep)
         return out if len(out) > 1 else out[0]
 
-    def h(self, average=False, bias=True,
-          by_population=False):
-        '''
+    def h(self, average=False, bias=True, by_population=False):
+        """
         Calculate heterozygosity over sites in sample.
         Returns a list of np.ndarrays of dimensions npop X segsites,
         or, if average==True, a npop X num_replicates np.ndarray.
@@ -265,17 +268,17 @@ class Sample(object):
             by_population (bool): whether to calculate heterozygosity by
                 population, or alternatively, as a metapopulation (H_T).
             h_opts (dict): Extra arguments for self.h().
-        '''
+        """
 
         # Check if multiple populations are provided or desired
-        populations = (self.populations
-                       if by_population
-                       else np.zeros(self.nchrom, dtype=int))
+        populations = (
+            self.populations if by_population else np.zeros(self.nchrom, dtype=int)
+        )
         # populations for portability to MetaSample
         # Each row in harray is a population; each column a snp.
-        sample_sizes = (self.pop_sample_sizes
-                        if by_population
-                        else np.array([[self.nchrom]]))
+        sample_sizes = (
+            self.pop_sample_sizes if by_population else np.array([[self.nchrom]])
+        )
         out = []
         for repidx, replicate in enumerate(self.popdata):
             if replicate.num_sites != 0:
@@ -283,24 +286,22 @@ class Sample(object):
                 parray = np.true_divide(num_mutants, sample_sizes.T)
                 harray = 2 * parray * (1 - parray)
                 if bias:
-                    harray = (np.true_divide(
-                        sample_sizes, (sample_sizes - 1)
-                        ).T * harray)
+                    harray = np.true_divide(sample_sizes, (sample_sizes - 1)).T * harray
                 if average:
                     out.append(np.mean(harray, axis=1))
                 else:
                     out.append(harray)
             elif by_population:
-                out.append(np.full(self.npop, 0.))
+                out.append(np.full(self.npop, 0.0))
             else:
-                out.append(np.full(1, 0.))
+                out.append(np.full(1, 0.0))
         if not average:
             return tuple(out)
         else:
             return np.array(out).T
 
     def num_mutants(self, populations, popdata=None):
-        '''
+        """
         Returns the number of mutant alleles observed at each site.
         Used by other methods.
 
@@ -309,35 +310,30 @@ class Sample(object):
                 which population each chromosome belongs.
             popdata (TreeSequence object or np.ndarray): Single replicate for
                 which to compute num_mutants.
-        '''
+        """
         # Allows computation of single replicate snps.
-        popdata = (self.popdata
-                   if not popdata
-                   else tuple(popdata for _ in (0, )))
+        popdata = self.popdata if not popdata else tuple(popdata for _ in (0,))
         popset = set(populations)
         out = []
         for repidx, replicate in enumerate(popdata):
-            num_mutants = np.zeros(
-                (len(popset), replicate.num_sites),
-                dtype=int
-                )
+            num_mutants = np.zeros((len(popset), replicate.num_sites), dtype=int)
             if self.type == "TreeSequence":
                 for siteidx, site in enumerate(replicate.variants()):
                     for pop in popset:
                         num_mutants[pop, siteidx] = np.count_nonzero(
                             site.genotypes[populations == pop]
-                            )
+                        )
             else:
                 for pop in popset:
                     num_mutants[pop] = np.count_nonzero(
                         self.gtmatrix[np.nonzero(populations == pop)], axis=0
-                        )
+                    )
             out.append(num_mutants)
         # Return tuple if multiple replicates, otherwise single matrix.
         return tuple(out)
 
     def pi(self, pi_method="h", h_opts={}, **kwargs):
-        '''
+        """
         Calculates different metrics of nucleotide diversity.
 
         Args:
@@ -355,15 +351,15 @@ class Sample(object):
                     namely 'bias'.
             h_opts (dict): Extra arguments for self.h() in the form of a
                 kwargs dictionary.
-        '''
+        """
 
-        out = np.zeros((len(self.popdata), ))
+        out = np.zeros((len(self.popdata),))
         for repidx, rep in enumerate(self.popdata):
             if pi_method == "nei":
                 # Hash rows of genotype matrix to reduce time comparing.
                 hashes = np.apply_along_axis(
                     lambda row: hash(tuple(row)), 1, self.gtmatrix()
-                    )
+                )
                 seqs = dict.fromkeys(set(hashes))
                 # Loop over seqs keys to calculate sequence frequncies
                 # as well as create dict items for sequences themselves.
@@ -374,24 +370,24 @@ class Sample(object):
                     if self.nchrom == 0:
                         seqs[seqid]["p"] = 0.0
                     else:
-                        seqs[seqid]["p"] = (np.count_nonzero(
-                            seqid_array == hashes) /
-                                            self.nchrom)
+                        seqs[seqid]["p"] = (
+                            np.count_nonzero(seqid_array == hashes) / self.nchrom
+                        )
                     # Associate sequences with hashes.
                     for i in np.arange(self.nchrom):
-                        if seqid == hash(tuple(self.gtmatrix()[i, ])):
-                            seqs[seqid]["seq"] = np.array(self.gtmatrix()[i, ])
+                        if seqid == hash(tuple(self.gtmatrix()[i,])):
+                            seqs[seqid]["seq"] = np.array(self.gtmatrix()[i,])
                             break
                 # Calculate nucleotide diversity.
                 nucdiv = 0
                 for i in seqs:
                     for j in seqs:
                         if i != j:
-                            nucdiv += (seqs[i]['p'] * seqs[j]['p'] *
-                                       np.count_nonzero(
-                                           seqs[i]["seq"] != seqs[j]["seq"]
-                                           )
-                                       )
+                            nucdiv += (
+                                seqs[i]["p"]
+                                * seqs[j]["p"]
+                                * np.count_nonzero(seqs[i]["seq"] != seqs[j]["seq"])
+                            )
                 out[repidx] = nucdiv
             elif pi_method == "tajima":
                 k = 0
@@ -399,9 +395,7 @@ class Sample(object):
                 gtmatrix = self.gtmatrix()
                 for i in np.arange(self.nchrom - 1):
                     for j in np.arange(i, self.nchrom):
-                        k += np.count_nonzero(
-                            gtmatrix[i, ] != gtmatrix[j, ]
-                            )
+                        k += np.count_nonzero(gtmatrix[i,] != gtmatrix[j,])
                 # Formula: \sum{k_ij} / (nchrom choose 2)
                 out[repidx] = k / ((self.nchrom - 1) * self.nchrom / 2)
             elif pi_method == "h":
@@ -413,7 +407,7 @@ class Sample(object):
         return out if out.size > 1 else out[0]
 
     def polymorphic(self, threshold=0, output=("num", "which")):
-        '''
+        """
         Returns polymorphism attributes as dict or value.
         Attributes are number of polymorphic sites and index positions of
         polymorphic sites.
@@ -427,23 +421,18 @@ class Sample(object):
                 or both. Possible values are "num" returning number of sites,
                 "which" returning indices,
                 or a tuple of both (default) returning a dict of both.
-        '''
+        """
         valid_outputs = ("which", "num")
-        snp_array = np.zeros(
-            (self.npop, self.num_replicates), dtype=int
-            )
+        snp_array = np.zeros((self.npop, self.num_replicates), dtype=int)
         which = []
-        for repidx, rep in enumerate(
-                self.num_mutants(populations=self.populations)
-                ):
+        for repidx, rep in enumerate(self.num_mutants(populations=self.populations)):
             snp_array[:, repidx] = np.count_nonzero(rep > threshold, 1)
             snp_which = np.nonzero(rep > threshold)
             which.append(snp_which)
-        results = {"which": tuple(which),
-                   "num": snp_array}
-        if (type(output) == tuple and
-                len(set(output).intersection(set(valid_outputs)))
-                == len(output)):
+        results = {"which": tuple(which), "num": snp_array}
+        if type(output) == tuple and len(
+            set(output).intersection(set(valid_outputs))
+        ) == len(output):
             return results
         elif output in valid_outputs:
             return results[output]
@@ -451,7 +440,7 @@ class Sample(object):
             raise ValueError(
                 "Invalid output, {output} specified."
                 "Specify 'num' or 'which'.".format(output=output)
-                )
+            )
 
     def segsites(self):
         out = np.zeros(len(self.popdata), dtype=int)
@@ -463,7 +452,7 @@ class Sample(object):
         return out[0] if out.size == 1 else out
 
     def theta_w(self, by_population=False, threshold=0):
-        '''
+        """
         Calculate the Watterson estimator.
 
         Args:
@@ -475,24 +464,23 @@ class Sample(object):
         Returns:
             If by_population: npop X num_replicates np.ndarray
             If not by_population: 1 X num_replicates np.ndarray
-        '''
+        """
         # Check if multiple populations are provided or desired
-        populations = (self.populations
-                       if by_population
-                       else np.zeros((self.nchrom, ), dtype=int))
+        populations = (
+            self.populations if by_population else np.zeros((self.nchrom,), dtype=int)
+        )
         # populations for portability to MetaSample
         nchrom = np.bincount(populations)
         harmonic_num = np.apply_along_axis(
-            lambda x: np.sum(1 / np.arange(1, x)),
-            1, nchrom.reshape((-1, 1))
-            )
+            lambda x: np.sum(1 / np.arange(1, x)), 1, nchrom.reshape((-1, 1))
+        )
         num_polymorphic = self.polymorphic(output="num", threshold=threshold)
         return num_polymorphic / harmonic_num.reshape((-1, 1))
 
 
 class MetaSample(Sample):
 
-    '''
+    """
 
     Class representing a metapopulation sample and associated methods.
 
@@ -507,10 +495,10 @@ class MetaSample(Sample):
         populations (np.ndarray): A 1-dimensional np.ndarray of ints
             specifying to which population each sample belongs.
 
-    '''
+    """
 
     def __init__(self, popdata, populations, force_meta=False):
-        '''
+        """
         Args:
             popdata (np.ndarray OR msprime.TreeSequence): A 2D np.ndarray
                 with individual chromosomes
@@ -527,30 +515,42 @@ class MetaSample(Sample):
                 which population each sample belongs.
             force_meta (bool): Whether to force a single population to become
                 a metapopulation rather than coercion to Population class.
-        '''
+        """
         super(MetaSample, self).__init__(popdata)
-        if (len(set(populations)) == 1
-                or (self.type == "TreeSequence"
-                    and self.popdata[0].num_populations == 1
-                    and not force_meta)):
+        if len(set(populations)) == 1 or (
+            self.type == "TreeSequence"
+            and self.popdata[0].num_populations == 1
+            and not force_meta
+        ):
             raise Exception(
                 "Only 1 population provided. "
                 "Use force_meta=True for MetaSample or use Sample."
-                )
-        else:
-            self.npop = (self.popdata[0].num_populations
-                         if self.type == "TreeSequence"
-                         else len(set(populations)))
-        self.pop_sample_sizes = np.array(
-            [[np.count_nonzero(np.full(self.nchrom, x) == populations)
-              for x in set(populations)]]
             )
+        else:
+            self.npop = (
+                self.popdata[0].num_populations
+                if self.type == "TreeSequence"
+                else len(set(populations))
+            )
+        self.pop_sample_sizes = np.array(
+            [
+                [
+                    np.count_nonzero(np.full(self.nchrom, x) == populations)
+                    for x in set(populations)
+                ]
+            ]
+        )
         self.populations = populations
 
-    def fst(self, fst_method="gst",
-            summary="mean", average_reps=False, average_sites=True,
-            h_opts={}):
-        '''
+    def fst(
+        self,
+        fst_method="gst",
+        summary="mean",
+        average_reps=False,
+        average_sites=True,
+        h_opts={},
+    ):
+        """
         Returns specified fst statistic.
         Args:
             fst_method (str): Only "gst" is supported right now. This returns
@@ -567,25 +567,18 @@ class MetaSample(Sample):
                 array. Redundant if not average_sites.
             h_opts (dict): Extra arguments for Sample.h(), in the form of a
                 kwargs dictionary.
-        '''
+        """
         if isinstance(summary, str):
-            summary = (summary, )
+            summary = (summary,)
         if fst_method == "gst":
             ind = np.where(self.segsites() != 0)[0]
-            h_by_site = tuple(self.h(by_population=True, **h_opts)[i]
-                              for i in ind)
+            h_by_site = tuple(self.h(by_population=True, **h_opts)[i] for i in ind)
             hs = tuple(
-                np.average(
-                    x, axis=0, weights=self.pop_sample_sizes[0])
+                np.average(x, axis=0, weights=self.pop_sample_sizes[0])
                 for x in h_by_site
-                )
-            ht = tuple(
-                x[0] for x in tuple(self.h(**h_opts)[i]
-                                    for i in ind)
-                )
-            fst = tuple((1 - np.true_divide(x, y))
-                        for x, y
-                        in zip(hs, ht))
+            )
+            ht = tuple(x[0] for x in tuple(self.h(**h_opts)[i] for i in ind))
+            fst = tuple((1 - np.true_divide(x, y)) for x, y in zip(hs, ht))
             if average_sites:
                 stats = []
                 if "mean" in summary:
@@ -600,9 +593,9 @@ class MetaSample(Sample):
                         stats.append(0.0)
                 if average_reps:
                     try:
-                        stats = [np.average(
-                            x, weights=self.segsites()[ind])
-                                 for x in stats]
+                        stats = [
+                            np.average(x, weights=self.segsites()[ind]) for x in stats
+                        ]
                     except Exception:
                         stats = np.array([0.0 for _ in stats])
                 return dict(zip(summary, stats))
@@ -613,14 +606,14 @@ class MetaSample(Sample):
 
 
 def fst(Nm, tau, rho):
-    '''
+    """
     Theoretical Fst from Nm, tau, and rho.
 
     Args:
         Nm (float): The migration parameter Ne * m.
         tau (float): The rate of vertical transmission.
         rho (float): The proportion of the population that is female.
-    '''
+    """
 
     A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
     B = 2 * rho * (1 - rho) * (A + rho)
@@ -628,13 +621,24 @@ def fst(Nm, tau, rho):
     return B / (Nm * rho + B)
 
 
-def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
-                stats=("fst_mean", "fst_sd", "pi_h"),
-                prior_params={"eta": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
-                nsamp_populations=None, num_replicates=1, num_cores="auto",
-                prior_seed=None, average_reps=True, progress_bar=False,
-                h_opts={}, **kwargs):
-    '''
+def ms_simulate(
+    nchrom,
+    num_populations,
+    host_theta,
+    host_Nm,
+    num_simulations,
+    stats=("fst_mean", "fst_sd", "pi_h"),
+    prior_params={"eta": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
+    nsamp_populations=None,
+    num_replicates=1,
+    num_cores="auto",
+    prior_seed=None,
+    average_reps=True,
+    progress_bar=False,
+    h_opts={},
+    **kwargs
+):
+    """
     Generate random sample summary using msprime for the specified prior
     distributions of tau (vertical transmission rate) and rho (sex ratio).
 
@@ -683,47 +687,48 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
             dictionary.
         **kwargs (): Extra arguments for ms.simulate(), Sample.pi(), and
             Sample.fst().
-    '''
+    """
 
     # Number of output statistics plus parameters eta, tau, and rho.
 
     populations = np.repeat(np.arange(num_populations), nchrom)
-    population_config = tuple(ms.PopulationConfiguration(nchrom)
-                              for _ in np.arange(num_populations))
-    nsamp_populations = (num_populations
-                         if not nsamp_populations
-                         else nsamp_populations)
+    population_config = tuple(
+        ms.PopulationConfiguration(nchrom) for _ in np.arange(num_populations)
+    )
+    nsamp_populations = num_populations if not nsamp_populations else nsamp_populations
     if prior_seed:
         np.random.seed(prior_seed)
     if isinstance(prior_params["eta"], float):
-        eta = np.full((num_simulations, ), prior_params["eta"])
+        eta = np.full((num_simulations,), prior_params["eta"])
     elif isinstance(prior_params["eta"], tuple):
         eta = np.random.normal(
-            prior_params["eta"][0],
-            prior_params["eta"][1],
-            num_simulations
-            )
+            prior_params["eta"][0], prior_params["eta"][1], num_simulations
+        )
     else:
         raise Exception("eta must be tuple or float")
-    tau = np.random.beta(prior_params["tau"][0],
-                         prior_params["tau"][1],
-                         size=num_simulations)
-    rho = np.random.beta(prior_params["rho"][0],
-                         prior_params["rho"][1],
-                         size=num_simulations)
+    tau = np.random.beta(
+        prior_params["tau"][0], prior_params["tau"][1], size=num_simulations
+    )
+    rho = np.random.beta(
+        prior_params["rho"][0], prior_params["rho"][1], size=num_simulations
+    )
     params = np.array([eta, tau, rho]).T
     simpartial = functools.partial(
         sim,
-        host_theta=host_theta, host_Nm=host_Nm,
-        population_config=population_config, num_replicates=num_replicates,
-        populations=populations, average_reps=True, stats=stats,
-        h_opts=h_opts, **kwargs
-        )
-    structure = {"names": stats + tuple(prior_params.keys()),
-                 "formats": tuple(
-                     np.repeat("f8", len(stats) + len(prior_params))
-                     )
-                 }
+        host_theta=host_theta,
+        host_Nm=host_Nm,
+        population_config=population_config,
+        num_replicates=num_replicates,
+        populations=populations,
+        average_reps=True,
+        stats=stats,
+        h_opts=h_opts,
+        **kwargs
+    )
+    structure = {
+        "names": stats + tuple(prior_params.keys()),
+        "formats": tuple(np.repeat("f8", len(stats) + len(prior_params))),
+    }
     if num_cores:
         # for multiprocessing, None automatically detects number of cores.
         # Switching here allows autodetection.
@@ -731,11 +736,7 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
             num_cores = cpu_count()
         pool = Pool(processes=num_cores)
         if progress_bar:
-            out = np.array(
-                list(
-                    tqdm(pool.imap(simpartial, params), total=len(params))
-                    )
-                )
+            out = np.array(list(tqdm(pool.imap(simpartial, params), total=len(params))))
         else:
             out = np.array(list(pool.imap(simpartial, params)))
     else:
@@ -744,9 +745,19 @@ def ms_simulate(nchrom, num_populations, host_theta, host_Nm, num_simulations,
     return out
 
 
-def sim(params, host_theta, host_Nm, population_config, populations, stats,
-        num_replicates, average_reps=True, h_opts={}, **kwargs):
-    '''
+def sim(
+    params,
+    host_theta,
+    host_Nm,
+    population_config,
+    populations,
+    stats,
+    num_replicates,
+    average_reps=True,
+    h_opts={},
+    **kwargs
+):
+    """
     Runs actual simulation with ms. Intended as helper for ms_simulate().
 
     At top level for picklability (for multiprocessing).
@@ -770,7 +781,7 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
         h_opts (dict): Extra arguments for Sample.h(), formatted as kwargs
             dictionary.
         **kwargs (): Extra arguments for msprime.simulate().
-    '''
+    """
     eta, tau, rho = params
     A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
     B = 2 * rho * (1 - rho) * (A + rho)
@@ -782,9 +793,10 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
         np.true_divide(
             # num_populations - 1 is multiplied by 2 to preserve the value of
             # 2*Nm during the simulation as ms does.
-            symbiont_Nm, ((num_populations - 1) * 2)
-            )
-        )
+            symbiont_Nm,
+            ((num_populations - 1) * 2),
+        ),
+    )
     np.fill_diagonal(migration, 0)
     tree = ms.simulate(
         Ne=0.5,  # again, factor of 1/2 to preserve ms behavior
@@ -793,44 +805,51 @@ def sim(params, host_theta, host_Nm, population_config, populations, stats,
         population_configurations=population_config,
         mutation_rate=symbiont_theta / 2,  # factor of 1/2 to preserve ms beh.
         **kwargs
-        )
+    )
     treesample = MetaSample(tree, populations)
-    out = (np.zeros((num_replicates, len(stats) + len(params)))
-           if not average_reps
-           else np.zeros((1, len(stats) + len(params))))
+    out = (
+        np.zeros((num_replicates, len(stats) + len(params)))
+        if not average_reps
+        else np.zeros((1, len(stats) + len(params)))
+    )
     if len(set(("fst_mean", "fst_sd")).intersection(set(stats))) > 0:
-        fst_summ = treesample.fst(average_sites=True,
-                                  average_reps=average_reps,
-                                  summary=("mean", "sd"), h_opts=h_opts)
+        fst_summ = treesample.fst(
+            average_sites=True,
+            average_reps=average_reps,
+            summary=("mean", "sd"),
+            h_opts=h_opts,
+        )
     for statidx, stat in enumerate(stats):
         if stat == "pi_h":
-            out[:, statidx] = (treesample.pi(pi_method="h", h_opts=h_opts,
-                                             **kwargs)
-                               if not average_reps
-                               else np.mean(treesample.pi(pi_method="h",
-                                            h_opts=h_opts, **kwargs)))
+            out[:, statidx] = (
+                treesample.pi(pi_method="h", h_opts=h_opts, **kwargs)
+                if not average_reps
+                else np.mean(treesample.pi(pi_method="h", h_opts=h_opts, **kwargs))
+            )
         elif stat == "pi_nei":
-            out[:, statidx] = (treesample.pi(pi_method="nei", **kwargs)
-                               if not average_reps
-                               else np.mean(
-                                   treesample.pi(pi_method="nei", **kwargs)
-                                   )
-                               )
+            out[:, statidx] = (
+                treesample.pi(pi_method="nei", **kwargs)
+                if not average_reps
+                else np.mean(treesample.pi(pi_method="nei", **kwargs))
+            )
         elif stat == "pi_tajima":
-            out[:, statidx] = (treesample.pi(pi_method="tajima", **kwargs)
-                               if not average_reps
-                               else np.mean(
-                                   treesample.pi(pi_method="tajima", **kwargs)
-                                   )
-                               )
+            out[:, statidx] = (
+                treesample.pi(pi_method="tajima", **kwargs)
+                if not average_reps
+                else np.mean(treesample.pi(pi_method="tajima", **kwargs))
+            )
         elif stat == "num_sites":
-            out[:, statidx] = (treesample.segsites()
-                               if not average_reps
-                               else np.mean(treesample.segsites()))
+            out[:, statidx] = (
+                treesample.segsites()
+                if not average_reps
+                else np.mean(treesample.segsites())
+            )
         elif stat == "theta_w":
-            out[:, statidx] = (treesample.theta_w()
-                               if not average_reps
-                               else np.mean(treesample.theta_w()))
+            out[:, statidx] = (
+                treesample.theta_w()
+                if not average_reps
+                else np.mean(treesample.theta_w())
+            )
         elif stat == "fst_mean":
             out[:, statidx] = fst_summ["mean"]
         elif stat == "fst_sd":
@@ -876,19 +895,20 @@ def main():
     npop = 10
     nchrom = 10
     host_Nm = 2.6666
-    population_config = [ms.PopulationConfiguration(nchrom)
-                         for _ in range(npop)]
+    population_config = [ms.PopulationConfiguration(nchrom) for _ in range(npop)]
 
     populations = np.repeat(np.arange(npop), nchrom)
     test_target = sim(
         (0, 1, 1),
-        host_theta=host_theta, host_Nm=host_Nm,
+        host_theta=host_theta,
+        host_Nm=host_Nm,
         stats=("fst_mean", "fst_sd", "pi_h"),
         population_config=population_config,
-        populations=populations, num_replicates=int(sys.argv[1]),
+        populations=populations,
+        num_replicates=int(sys.argv[1]),
         random_seed=random_seed,
-        average_reps=True
-        )
+        average_reps=True,
+    )
     # test_target2 = sim(
     #     (1, 1, 1),
     #     stats=("fst_mean", "fst_sd", "pi_h"),
@@ -897,22 +917,25 @@ def main():
     #     num_replicates=10, average_reps=False
     #     )
     test_simulation = ms_simulate(
-        nchrom=10, num_populations=10,
-        host_theta=host_theta, host_Nm=host_Nm,
-        num_simulations=100, num_replicates=10,
+        nchrom=10,
+        num_populations=10,
+        host_theta=host_theta,
+        host_Nm=host_Nm,
+        num_simulations=100,
+        num_replicates=10,
         prior_params={"eta": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
         num_cores="auto",
         prior_seed=prior_seed,
         average_reps=True,
         h_opts={"bias": True},
         random_seed=random_seed,
-        progress_bar=True
-        )
+        progress_bar=True,
+    )
     r_abc = Abc(
         target=test_target[0:3],
         param=test_simulation[["eta", "tau", "rho"]],
-        sumstat=test_simulation[["fst_mean", "fst_sd", "pi_h"]]
-        )
+        sumstat=test_simulation[["fst_mean", "fst_sd", "pi_h"]],
+    )
     print(r_abc.summary())
     # print(test_simulation[0:9])
     # print(r_abc.summary())

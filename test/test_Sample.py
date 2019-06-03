@@ -28,17 +28,17 @@ def single_replicate():
     """
     Generate a single replicate of two populations with msprime.
     """
-    population_config = [ms.PopulationConfiguration(sample_size=4)
-                         for _ in (0, 1)]
-    migration = np.full((2, 2), 10.)
-    np.fill_diagonal(migration, 0.)
+    population_config = [ms.PopulationConfiguration(sample_size=4) for _ in (0, 1)]
+    migration = np.full((2, 2), 10.0)
+    np.fill_diagonal(migration, 0.0)
     out = ms.simulate(
         population_configurations=population_config,
         migration_matrix=migration,
         mutation_rate=0.5,
-        random_seed=3
-        )
+        random_seed=3,
+    )
     return Sample(out)
+
 
 # single_replicate genotypes
 # array([[1, 1, 0, 1, 0],
@@ -56,18 +56,18 @@ def double_replicate():
     """
     Generate a double replicate of two populations with msprime.
     """
-    population_config = [ms.PopulationConfiguration(sample_size=4)
-                         for _ in (0, 1)]
-    migration = np.full((2, 2), 10.)
-    np.fill_diagonal(migration, 0.)
+    population_config = [ms.PopulationConfiguration(sample_size=4) for _ in (0, 1)]
+    migration = np.full((2, 2), 10.0)
+    np.fill_diagonal(migration, 0.0)
     out = ms.simulate(
         population_configurations=population_config,
         migration_matrix=migration,
         mutation_rate=0.5,
         num_replicates=2,
-        random_seed=3
-        )
+        random_seed=3,
+    )
     return Sample(out)
+
 
 # double_replicate genotypes
 # [array([[1, 1, 0, 1, 0],
@@ -89,77 +89,94 @@ def double_replicate():
 
 
 # single replicate
-@pytest.mark.parametrize("bias, expected", [
-    (False, np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875])),
-    (True,
-     8. / (8. - 1.) * np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875])
-     )
-    ])
+@pytest.mark.parametrize(
+    "bias, expected",
+    [
+        (False, np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875])),
+        (
+            True,
+            8.0 / (8.0 - 1.0) * np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875]),
+        ),
+    ],
+)
 def test_h_no_average_one_rep(bias, expected, single_replicate):
     assert np.isclose(single_replicate.h(bias=bias), expected).all()
 
 
-@pytest.mark.parametrize("bias, expected", [
-    (False, 0.300),
-    (True, 8. / (8. - 1.) * 0.300)
-    ])
+@pytest.mark.parametrize(
+    "bias, expected", [(False, 0.300), (True, 8.0 / (8.0 - 1.0) * 0.300)]
+)
 def test_h_average_one_rep(bias, expected, single_replicate):
-    assert np.isclose(
-        single_replicate.h(bias=bias, average=True),
-        expected
-        )
+    assert np.isclose(single_replicate.h(bias=bias, average=True), expected)
 
 
-@pytest.mark.parametrize("threshold, expected", [
-    (0, 1.928374656),
-    (1, 0.771349862),
-    ])
+@pytest.mark.parametrize("threshold, expected", [(0, 1.928374656), (1, 0.771349862)])
 def test_theta_w_one_rep(threshold, expected, single_replicate):
     assert np.isclose(
-        expected,
-        single_replicate.theta_w(
-            by_population=False,
-            threshold=threshold
-            )
-        )
+        expected, single_replicate.theta_w(by_population=False, threshold=threshold)
+    )
 
 
 # double replicate
-@pytest.mark.parametrize("bias, expected", [
-    (False, [
-        np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875]),
-        np.array([0.5, 0.21875, 0.21875, 0.375, 0.5, 0.21875, 0.21875])
-        ]),
-    (True, [
-        (8. / (8. - 1.) *
-         np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875])),
-        (8. / (8. - 1) *
-         np.array([0.5, 0.21875, 0.21875,
-                   0.375, 0.5, 0.21875, 0.21875]))
-        ]),
-    ])
+@pytest.mark.parametrize(
+    "bias, expected",
+    [
+        (
+            False,
+            [
+                np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875]),
+                np.array([0.5, 0.21875, 0.21875, 0.375, 0.5, 0.21875, 0.21875]),
+            ],
+        ),
+        (
+            True,
+            [
+                (
+                    8.0
+                    / (8.0 - 1.0)
+                    * np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875])
+                ),
+                (
+                    8.0
+                    / (8.0 - 1)
+                    * np.array([0.5, 0.21875, 0.21875, 0.375, 0.5, 0.21875, 0.21875])
+                ),
+            ],
+        ),
+    ],
+)
 def test_h_no_average_two_reps(bias, expected, double_replicate):
     heterozygosity = double_replicate.h(bias=bias)
-    out = [np.isclose(expected_local, heterozygosity[i]).all()
-           for i, expected_local in enumerate(expected)]
+    out = [
+        np.isclose(expected_local, heterozygosity[i]).all()
+        for i, expected_local in enumerate(expected)
+    ]
     assert all(out)
 
 
-@pytest.mark.parametrize("bias, expected", [
-    (False, [0.300, 0.321428571]),
-    (True, [(8. / (8. - 1.) * 0.300), (8. / (8. - 1) * 0.321428571)])
-    ])
+@pytest.mark.parametrize(
+    "bias, expected",
+    [
+        (False, [0.300, 0.321428571]),
+        (True, [(8.0 / (8.0 - 1.0) * 0.300), (8.0 / (8.0 - 1) * 0.321428571)]),
+    ],
+)
 def test_h_average_two_reps(bias, expected, double_replicate):
     heterozygosity = double_replicate.h(bias=bias, average=True)
-    out = [np.isclose(expected_local, heterozygosity[0, i]).all()
-           for i, expected_local in enumerate(expected)]
+    out = [
+        np.isclose(expected_local, heterozygosity[0, i]).all()
+        for i, expected_local in enumerate(expected)
+    ]
     assert all(out)
 
 
-@pytest.mark.parametrize("threshold, expected", [
-    (0, np.array([1.928374656, 2.699724518])),
-    (1, np.array([0.771349862, 1.157024793]))
-    ])
+@pytest.mark.parametrize(
+    "threshold, expected",
+    [
+        (0, np.array([1.928374656, 2.699724518])),
+        (1, np.array([0.771349862, 1.157024793])),
+    ],
+)
 def test_theta_w_two_reps(threshold, expected, double_replicate):
     out = np.isclose(double_replicate.theta_w(threshold=threshold), expected)
     assert out.all()

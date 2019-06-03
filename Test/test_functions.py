@@ -23,22 +23,22 @@ import pytest
 import transmission as trans
 
 
-@pytest.mark.parametrize("Nm, tau, rho", [
-    (2.6, 1., 0.5),
-    (2.6, 0.5, 0.5),
-    (2.6, 0., 0.5)
-    ])
+@pytest.mark.parametrize(
+    "Nm, tau, rho", [(2.6, 1.0, 0.5), (2.6, 0.5, 0.5), (2.6, 0.0, 0.5)]
+)
 def test_sim_fst(Nm, tau, rho):
     nchrom = 24
     d = 10
     pops = [ms.PopulationConfiguration(nchrom) for _ in range(d)]
-    data = trans.sim(params=(0, tau, rho),
-                     host_theta=1,
-                     host_Nm=Nm,
-                     stats=("fst_mean",),
-                     population_config=pops,
-                     populations=np.repeat(np.arange(d), nchrom),
-                     random_seed=3,
-                     num_replicates=10,
-                     average_reps=True)
+    data = trans.sim(
+        params=(0, tau, rho),
+        host_theta=1,
+        host_Nm=Nm,
+        stats=("fst_mean",),
+        population_config=pops,
+        populations=np.repeat(np.arange(d), nchrom),
+        random_seed=3,
+        num_replicates=10,
+        average_reps=True,
+    )
     assert np.isclose(data[0], trans.fst(Nm, tau, rho), rtol=0.20)
