@@ -618,7 +618,7 @@ def fst(Nm, tau, rho):
     A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
     B = 2 * rho * (1 - rho) * (A + rho)
 
-    return B / (Nm * rho + B)
+    return B / (Nm + B)
 
 
 def ms_simulate(
@@ -632,6 +632,7 @@ def ms_simulate(
     nsamp_populations=None,
     num_replicates=1,
     num_cores="auto",
+    theta_source="mt",
     prior_seed=None,
     average_reps=True,
     progress_bar=False,
@@ -681,6 +682,7 @@ def ms_simulate(
             None will use a single thread not routed through
             multiprocessing.Pool, primarily for debugging and profiling.
             An int value will specify the number of cores to use.
+        theta_source (str): What is theta estimated from? Takes "mt" or "nuc".
         prior_seed (int): The seed used to draw samples for tau and rho.
             Setting a seed will allow repeatability of results.
         h_opts (dict): Extra options for Sample.h() in the form of a kwargs
@@ -720,6 +722,7 @@ def ms_simulate(
         population_config=population_config,
         num_replicates=num_replicates,
         populations=populations,
+        theta_source=theta_source,
         average_reps=True,
         stats=stats,
         h_opts=h_opts,
@@ -753,6 +756,7 @@ def sim(
     populations,
     stats,
     num_replicates,
+    theta_source="mt",
     average_reps=True,
     h_opts={},
     **kwargs
@@ -773,6 +777,7 @@ def sim(
         stats (tuple): The requested statistics to be calculated. May contain
             any of "fst_mean", "fst_sd", "pi_h", "pi_nei", "pi_tajima",
             "theta_w", or "num_sites".
+        theta_source (str): What is theta estimated from? Takes "mt" or "nuc".
         average_reps (bool): Whether to return averaged replicates. False will
             return raw summaries.
         num_replicates (int): Number of msprime replicates to run for each
@@ -782,11 +787,13 @@ def sim(
             dictionary.
         **kwargs (): Extra arguments for msprime.simulate().
     """
+
     eta, tau, rho = params
+    a = rho if theta_source == "mt" else 2.
     A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
     B = 2 * rho * (1 - rho) * (A + rho)
-    symbiont_Nm = np.true_divide(host_Nm * rho, 2 * B)
-    symbiont_theta = np.true_divide(10 ** eta * host_theta * rho, 2 * B)
+    symbiont_Nm = np.true_divide(host_Nm, 2 * B)
+    symbiont_theta = np.true_divide(10 ** eta * host_theta, a * 2 * B)
     num_populations = len(population_config)
     migration = np.full(
         (num_populations, num_populations),

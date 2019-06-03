@@ -49,7 +49,9 @@
 
 - Fixed a small syntax error.
 
-
 # 0.0.7
 
+- Changed host_theta to reflect proposal.
+- Added host_source to sim() and ms_simulate()
+- Changed test_sim_fst() to have 0.10 rtol.
 

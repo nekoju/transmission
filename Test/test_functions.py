@@ -41,4 +41,4 @@ def test_sim_fst(Nm, tau, rho):
         num_replicates=10,
         average_reps=True,
     )
-    assert np.isclose(data[0], trans.fst(Nm, tau, rho), rtol=0.20)
+    assert np.isclose(data[0], trans.fst(Nm, tau, rho), rtol=0.10)
