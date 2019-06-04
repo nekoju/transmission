@@ -186,9 +186,9 @@ def test_theta_w_two_reps(threshold, expected, double_replicate):
     "method, expected",
     [
         ("tajima", np.array([1.714285714, 2.571428571])),
-        ("nei", np.array([0.75, 1.125])),
+        ("nei", np.array([1.5, 2.25])),
     ]
 )
 def test_pi_two_reps(method, expected, double_replicate):
-    out = np.isclose(double_replicate.pi(method=method), expected)
+    out = np.isclose(double_replicate.pi(pi_method=method), expected)
     assert out.all()

@@ -354,11 +354,11 @@ class Sample(object):
         """
 
         out = np.zeros((len(self.popdata),))
-        for repidx, rep in enumerate(self.popdata):
-            if pi_method == "nei":
+        if pi_method == "nei":
+            for repidx, rep in enumerate(self.gtmatrix()):
                 # Hash rows of genotype matrix to reduce time comparing.
                 hashes = np.apply_along_axis(
-                    lambda row: hash(tuple(row)), 1, self.gtmatrix()
+                    lambda row: hash(tuple(row)), 1, rep
                 )
                 seqs = dict.fromkeys(set(hashes))
                 # Loop over seqs keys to calculate sequence frequncies
@@ -375,8 +375,8 @@ class Sample(object):
                         )
                     # Associate sequences with hashes.
                     for i in np.arange(self.nchrom):
-                        if seqid == hash(tuple(self.gtmatrix()[i,])):
-                            seqs[seqid]["seq"] = np.array(self.gtmatrix()[i,])
+                        if seqid == hash(tuple(rep[i, ])):
+                            seqs[seqid]["seq"] = np.array(rep[i, ])
                             break
                 # Calculate nucleotide diversity.
                 nucdiv = 0
@@ -389,21 +389,19 @@ class Sample(object):
                                 * np.count_nonzero(seqs[i]["seq"] != seqs[j]["seq"])
                             )
                 out[repidx] = nucdiv
-            elif pi_method == "tajima":
+        elif pi_method == "tajima":
+            for repidx, rep in enumerate(self.gtmatrix()):
                 k = 0
                 # count number of pairwise differences for unique comparisons.
-                gtmatrix = self.gtmatrix()
                 for i in np.arange(self.nchrom - 1):
                     for j in np.arange(i, self.nchrom):
-                        k += np.count_nonzero(gtmatrix[i,] != gtmatrix[j,])
+                        k += np.count_nonzero(rep[i, ] != rep[j, ])
                 # Formula: \sum{k_ij} / (nchrom choose 2)
                 out[repidx] = k / ((self.nchrom - 1) * self.nchrom / 2)
-            elif pi_method == "h":
-                pass
-            else:
-                raise NameError("Unsupported method, {}".format(pi_method))
-        if pi_method == "h":
+        elif pi_method == "h":
             out = np.array([np.sum(x) for x in self.h(**h_opts)])
+        else:
+            raise NameError("Unsupported method, {}".format(pi_method))
         return out if out.size > 1 else out[0]
 
     def polymorphic(self, threshold=0, output=("num", "which")):
