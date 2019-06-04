@@ -54,5 +54,8 @@
 - Changed host_theta to reflect proposal.
 - Added host_source to sim() and ms_simulate()
 - Changed test_sim_fst() to have 0.10 rtol.
-- Added tests for "nei" and "tajima" Sample.pi() methods.
+- Added tests for "nei" and "tajima" Sample.pi() methods, as well as
+  Sample.num_mutants() and Sample.polymorphic()
+- Updated README.md to include information on running a Jupyter notebook
+  server from the Docker image.
 

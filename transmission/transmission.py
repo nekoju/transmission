@@ -816,7 +816,12 @@ def sim(
     """
 
     eta, tau, rho = params
-    a = rho if theta_source == "mt" else 2.0
+    if theta_source == "mt":
+        a = rho
+    elif theta_source == "nuc":
+        a = 2.0
+    else:
+        raise ValueError("theta_source must be 'mt' or 'nuc'")
     A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
     B = 2 * rho * (1 - rho) * (A + rho)
     symbiont_Nm = np.true_divide(host_Nm, 2 * B)
@@ -897,86 +902,7 @@ def sim(
 
 
 def main():
-    # d = 2
-    # n = 4
-    # population_configurations = [ms.PopulationConfiguration(n)
-    #                              for _ in range(d)]
-    # migration = np.full((d, d), 2.5)
-    # for i in range(d):
-    #     for j in range(d):
-    #         if i == j:
-    #             migration[i, j] = 0
-    # test = tuple(ms.simulate(
-    #     population_configurations=population_configurations,
-    #     migration_matrix=migration,
-    #     # reset to 1 / 4
-    #     # no_snps, set to 0.25 / 4
-    #     mutation_rate=1 / 4,
-    #     num_replicates=2,
-    #     # reset to 3
-    #     # 6 gives one popln with no snps and one with
-    #     random_seed=random_seed
-    #     ))
-    # # a = (testsample.h(average=False, by_population=True))
-    # b = testsample.h()
-    # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None,
-    # num_replicates=2,
-    # random_seed=random_seed, num_cores=None))
-    # print(ms_simulate(4, 2, 1, 1, 2, nsamp_populations=None,
-    # num_replicates=2,
-    # random_seed=random_seed, num_cores=4)["fst_mean"])
-    prior_seed = 3
-    random_seed = 3
-    host_theta = 1
-    npop = 10
-    nchrom = 10
-    host_Nm = 2.6666
-    population_config = [
-        ms.PopulationConfiguration(nchrom) for _ in range(npop)
-    ]
-
-    populations = np.repeat(np.arange(npop), nchrom)
-    test_target = sim(
-        (0, 1, 1),
-        host_theta=host_theta,
-        host_Nm=host_Nm,
-        stats=("fst_mean", "fst_sd", "pi_h"),
-        population_config=population_config,
-        populations=populations,
-        num_replicates=int(sys.argv[1]),
-        random_seed=random_seed,
-        average_reps=True,
-    )
-    # test_target2 = sim(
-    #     (1, 1, 1),
-    #     stats=("fst_mean", "fst_sd", "pi_h"),
-    #     population_config=population_config,
-    #     populations=populations, random_seed=random_seed,
-    #     num_replicates=10, average_reps=False
-    #     )
-    test_simulation = ms_simulate(
-        nchrom=10,
-        num_populations=10,
-        host_theta=host_theta,
-        host_Nm=host_Nm,
-        num_simulations=100,
-        num_replicates=10,
-        prior_params={"eta": (0, 0.1), "tau": (1, 1), "rho": (1, 1)},
-        num_cores="auto",
-        prior_seed=prior_seed,
-        average_reps=True,
-        h_opts={"bias": True},
-        random_seed=random_seed,
-        progress_bar=True,
-    )
-    r_abc = Abc(
-        target=test_target[0:3],
-        param=test_simulation[["eta", "tau", "rho"]],
-        sumstat=test_simulation[["fst_mean", "fst_sd", "pi_h"]],
-    )
-    print(r_abc.summary())
-    # print(test_simulation[0:9])
-    # print(r_abc.summary())
+    return 0
 
 
 if __name__ == "__main__":

@@ -21,6 +21,13 @@ transmission-priorgen -n 10 -d 5 -M 2 -s 100 \
 
 ### Using the Docker image
 
+There is a docker image available to use the command line tools as well as
+to launch a Jupyter notebook server. It can be found [here](https://cloud.docker.com/repository/docker/mpjuers/transmission).
+The most recent push to master is tagged `latest`, however it is probably
+desirable to use explicit version numbers for reproducibility.
+
+#### To generate priors
+
 ```
 docker run --rm -v </path/to/host/directory>:/home/jovyan/work \
     mpjuers/transmission:<version> \
@@ -40,5 +47,24 @@ singularity exec --contain -B </path/to/host/directory>:/home/jovyan/work \
     transmission-priorgen [options] /home/jovyan/work/<outfile.pickle>
 ```
 
-You may or man not need the `--contain` flag; I needed because I had some
+You may or may not need the `--contain` flag; I needed because I had some
 locally installed python modules that conflicted with those in the container.
+
+#### Using the Docker image to run a Jupyter notebook server.
+
+I have had some difficulty compiling rpy2 on my platform (MacOS Mojave).
+This may or may not still be the case, but if you wish to avoid any problems
+associated with setting up transmission on your machine, it is possible to
+run a Jupyter server from the Docker image.
+
+```
+docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes \
+    -v </path/to/local/dir>a:/home/jovyan/work mpjuers/transmission:<version>
+```
+
+Omit `-e JUPYTER_ENEABLE_LAB=yes` if you are going to use a vanilla notebook. 
+Then you can just open `<hostname>:8888/` and enter the token that appears in
+the terminal and anything saved to `~/work` 
+on the container will appear in `</path/to/local/dir>` (and vice-versa).
+For more information on running Jupyter Docker containers, go to [https://github.com/jupyter/docker-stacks].
+
