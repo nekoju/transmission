@@ -22,13 +22,17 @@ import numpy as np
 import pytest
 from transmission.transmission import Sample
 
+num_samples = 4
+
 
 @pytest.fixture
 def single_replicate():
     """
     Generate a single replicate of two populations with msprime.
     """
-    population_config = [ms.PopulationConfiguration(sample_size=4) for _ in (0, 1)]
+    population_config = [
+        ms.PopulationConfiguration(sample_size=num_samples) for _ in (0, 1)
+    ]
     migration = np.full((2, 2), 10.0)
     np.fill_diagonal(migration, 0.0)
     out = ms.simulate(
@@ -56,7 +60,9 @@ def double_replicate():
     """
     Generate a double replicate of two populations with msprime.
     """
-    population_config = [ms.PopulationConfiguration(sample_size=4) for _ in (0, 1)]
+    population_config = [
+        ms.PopulationConfiguration(sample_size=num_samples) for _ in (0, 1)
+    ]
     migration = np.full((2, 2), 10.0)
     np.fill_diagonal(migration, 0.0)
     out = ms.simulate(
@@ -95,7 +101,9 @@ def double_replicate():
         (False, np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875])),
         (
             True,
-            8.0 / (8.0 - 1.0) * np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875]),
+            8.0
+            / (8.0 - 1.0)
+            * np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875]),
         ),
     ],
 )
@@ -110,10 +118,13 @@ def test_h_average_one_rep(bias, expected, single_replicate):
     assert np.isclose(single_replicate.h(bias=bias, average=True), expected)
 
 
-@pytest.mark.parametrize("threshold, expected", [(0, 1.928374656), (1, 0.771349862)])
+@pytest.mark.parametrize(
+    "threshold, expected", [(0, 1.928374656), (1, 0.771349862)]
+)
 def test_theta_w_one_rep(threshold, expected, single_replicate):
     assert np.isclose(
-        expected, single_replicate.theta_w(by_population=False, threshold=threshold)
+        expected,
+        single_replicate.theta_w(by_population=False, threshold=threshold),
     )
 
 
@@ -125,7 +136,9 @@ def test_theta_w_one_rep(threshold, expected, single_replicate):
             False,
             [
                 np.array([0.21875, 0.21875, 0.21875, 0.375, 0.46875]),
-                np.array([0.5, 0.21875, 0.21875, 0.375, 0.5, 0.21875, 0.21875]),
+                np.array(
+                    [0.5, 0.21875, 0.21875, 0.375, 0.5, 0.21875, 0.21875]
+                ),
             ],
         ),
         (
@@ -139,7 +152,9 @@ def test_theta_w_one_rep(threshold, expected, single_replicate):
                 (
                     8.0
                     / (8.0 - 1)
-                    * np.array([0.5, 0.21875, 0.21875, 0.375, 0.5, 0.21875, 0.21875])
+                    * np.array(
+                        [0.5, 0.21875, 0.21875, 0.375, 0.5, 0.21875, 0.21875]
+                    )
                 ),
             ],
         ),
@@ -187,8 +202,19 @@ def test_theta_w_two_reps(threshold, expected, double_replicate):
     [
         ("tajima", np.array([1.714285714, 2.571428571])),
         ("nei", np.array([1.5, 2.25])),
-    ]
+    ],
 )
 def test_pi_two_reps(method, expected, double_replicate):
     out = np.isclose(double_replicate.pi(pi_method=method), expected)
     assert out.all()
+
+
+@pytest.mark.parametrize(
+    "expected",
+    [(np.array([[1, 1, 1, 2, 3]]), np.array([[4, 1, 1, 2, 4, 1, 1]]))],
+)
+def test_num_mutants(expected, double_replicate):
+    test = double_replicate.num_mutants(
+        populations=np.repeat(0, num_samples * 2)
+    )
+    assert all(np.array_equal(test[i], expected[i]) for i in range(len(test)))

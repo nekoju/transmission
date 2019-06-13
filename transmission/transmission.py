@@ -306,7 +306,7 @@ class Sample(object):
         Used by other methods.
 
         Args:
-            populations (list, tuple, or np.ndarray): Ints corresponding to
+            populations (numpy.ndarray): Ints corresponding to
                 which population each chromosome belongs.
             popdata (TreeSequence object or np.ndarray): Single replicate for
                 which to compute num_mutants.
