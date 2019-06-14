@@ -218,3 +218,27 @@ def test_num_mutants(expected, double_replicate):
         populations=np.repeat(0, num_samples * 2)
     )
     assert all(np.array_equal(test[i], expected[i]) for i in range(len(test)))
+
+
+@pytest.mark.parametrize(
+    "expected",
+    [
+        {
+            "which": (
+                (np.zeros(5, int), np.arange(5)),
+                (np.zeros(7, int), np.arange(7)),
+            ),
+            "num": (5, 7),
+        },
+        {
+            "which": (
+                (np.zeros(2, int), np.array([3, 4])),
+                (np.zeros(3, int), np.array([0, 3, 4])),
+            ),
+            "num": (2, 3),
+        },
+    ],
+)
+def test_polymorphic(expected, double_replicate):
+    test = double_replicate.polymorphic()
+    assert hash(frozenset(expected)) == hash(frozenset(test))

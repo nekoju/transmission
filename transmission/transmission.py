@@ -117,7 +117,9 @@ class Abc(object):
         if method == "neuralnet":
             self.lambda_0 = np.array(self.abc.rx2("lambda"))
         if self.abc.rx2("na.action") != NULL:
-            self.na_action = robjects.vectors.BoolVector(self.abc.rx2("na.action"))
+            self.na_action = robjects.vectors.BoolVector(
+                self.abc.rx2("na.action")
+            )
         if not self.abc.rx2("region") != NULL:
             self.region = robjects.vectors.BoolVector(self.abc.rx2("region"))
         self.unadj_values = np.core.records.fromarrays(
@@ -240,7 +242,9 @@ class Sample(object):
         print(
             "a {reps} replicate {nchrom} chromosome sample with "
             "{segsites} segregating sites".format(
-                nchrom=self.nchrom, segsites=self.segsites(), reps=len(self.popdata)
+                nchrom=self.nchrom,
+                segsites=self.segsites(),
+                reps=len(self.popdata),
             )
         )
 
@@ -272,12 +276,16 @@ class Sample(object):
 
         # Check if multiple populations are provided or desired
         populations = (
-            self.populations if by_population else np.zeros(self.nchrom, dtype=int)
+            self.populations
+            if by_population
+            else np.zeros(self.nchrom, dtype=int)
         )
         # populations for portability to MetaSample
         # Each row in harray is a population; each column a snp.
         sample_sizes = (
-            self.pop_sample_sizes if by_population else np.array([[self.nchrom]])
+            self.pop_sample_sizes
+            if by_population
+            else np.array([[self.nchrom]])
         )
         out = []
         for repidx, replicate in enumerate(self.popdata):
@@ -286,7 +294,10 @@ class Sample(object):
                 parray = np.true_divide(num_mutants, sample_sizes.T)
                 harray = 2 * parray * (1 - parray)
                 if bias:
-                    harray = np.true_divide(sample_sizes, (sample_sizes - 1)).T * harray
+                    harray = (
+                        np.true_divide(sample_sizes, (sample_sizes - 1)).T
+                        * harray
+                    )
                 if average:
                     out.append(np.mean(harray, axis=1))
                 else:
@@ -316,7 +327,9 @@ class Sample(object):
         popset = set(populations)
         out = []
         for repidx, replicate in enumerate(popdata):
-            num_mutants = np.zeros((len(popset), replicate.num_sites), dtype=int)
+            num_mutants = np.zeros(
+                (len(popset), replicate.num_sites), dtype=int
+            )
             if self.type == "TreeSequence":
                 for siteidx, site in enumerate(replicate.variants()):
                     for pop in popset:
@@ -371,12 +384,13 @@ class Sample(object):
                         seqs[seqid]["p"] = 0.0
                     else:
                         seqs[seqid]["p"] = (
-                            np.count_nonzero(seqid_array == hashes) / self.nchrom
+                            np.count_nonzero(seqid_array == hashes)
+                            / self.nchrom
                         )
                     # Associate sequences with hashes.
                     for i in np.arange(self.nchrom):
-                        if seqid == hash(tuple(rep[i, ])):
-                            seqs[seqid]["seq"] = np.array(rep[i, ])
+                        if seqid == hash(tuple(rep[i,])):
+                            seqs[seqid]["seq"] = np.array(rep[i,])
                             break
                 # Calculate nucleotide diversity.
                 nucdiv = 0
@@ -386,7 +400,9 @@ class Sample(object):
                             nucdiv += (
                                 seqs[i]["p"]
                                 * seqs[j]["p"]
-                                * np.count_nonzero(seqs[i]["seq"] != seqs[j]["seq"])
+                                * np.count_nonzero(
+                                    seqs[i]["seq"] != seqs[j]["seq"]
+                                )
                             )
                 out[repidx] = nucdiv
         elif pi_method == "tajima":
@@ -395,7 +411,7 @@ class Sample(object):
                 # count number of pairwise differences for unique comparisons.
                 for i in np.arange(self.nchrom - 1):
                     for j in np.arange(i, self.nchrom):
-                        k += np.count_nonzero(rep[i, ] != rep[j, ])
+                        k += np.count_nonzero(rep[i,] != rep[j,])
                 # Formula: \sum{k_ij} / (nchrom choose 2)
                 out[repidx] = k / ((self.nchrom - 1) * self.nchrom / 2)
         elif pi_method == "h":
@@ -423,8 +439,12 @@ class Sample(object):
         valid_outputs = ("which", "num")
         snp_array = np.zeros((self.npop, self.num_replicates), dtype=int)
         which = []
-        for repidx, rep in enumerate(self.num_mutants(populations=self.populations)):
-            snp_array[:, repidx] = np.count_nonzero(rep > threshold, 1)
+        for repidx, rep in enumerate(
+            self.num_mutants(populations=self.populations)
+        ):
+            snp_array[:, repidx] = np.count_nonzero(rep > threshold, axis=1)
+            # np.nonzero returns an array of *coordinates*.
+            # Transpose for ordered pairs on rows.
             snp_which = np.nonzero(rep > threshold)
             which.append(snp_which)
         results = {"which": tuple(which), "num": snp_array}
@@ -465,7 +485,9 @@ class Sample(object):
         """
         # Check if multiple populations are provided or desired
         populations = (
-            self.populations if by_population else np.zeros((self.nchrom,), dtype=int)
+            self.populations
+            if by_population
+            else np.zeros((self.nchrom,), dtype=int)
         )
         # populations for portability to MetaSample
         nchrom = np.bincount(populations)
@@ -570,7 +592,9 @@ class MetaSample(Sample):
             summary = (summary,)
         if fst_method == "gst":
             ind = np.where(self.segsites() != 0)[0]
-            h_by_site = tuple(self.h(by_population=True, **h_opts)[i] for i in ind)
+            h_by_site = tuple(
+                self.h(by_population=True, **h_opts)[i] for i in ind
+            )
             hs = tuple(
                 np.average(x, axis=0, weights=self.pop_sample_sizes[0])
                 for x in h_by_site
@@ -592,7 +616,8 @@ class MetaSample(Sample):
                 if average_reps:
                     try:
                         stats = [
-                            np.average(x, weights=self.segsites()[ind]) for x in stats
+                            np.average(x, weights=self.segsites()[ind])
+                            for x in stats
                         ]
                     except Exception:
                         stats = np.array([0.0 for _ in stats])
@@ -695,7 +720,9 @@ def ms_simulate(
     population_config = tuple(
         ms.PopulationConfiguration(nchrom) for _ in np.arange(num_populations)
     )
-    nsamp_populations = num_populations if not nsamp_populations else nsamp_populations
+    nsamp_populations = (
+        num_populations if not nsamp_populations else nsamp_populations
+    )
     if prior_seed:
         np.random.seed(prior_seed)
     if isinstance(prior_params["eta"], float):
@@ -737,7 +764,9 @@ def ms_simulate(
             num_cores = cpu_count()
         pool = Pool(processes=num_cores)
         if progress_bar:
-            out = np.array(list(tqdm(pool.imap(simpartial, params), total=len(params))))
+            out = np.array(
+                list(tqdm(pool.imap(simpartial, params), total=len(params)))
+            )
         else:
             out = np.array(list(pool.imap(simpartial, params)))
     else:
@@ -787,7 +816,7 @@ def sim(
     """
 
     eta, tau, rho = params
-    a = rho if theta_source == "mt" else 2.
+    a = rho if theta_source == "mt" else 2.0
     A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
     B = 2 * rho * (1 - rho) * (A + rho)
     symbiont_Nm = np.true_divide(host_Nm, 2 * B)
@@ -829,7 +858,9 @@ def sim(
             out[:, statidx] = (
                 treesample.pi(pi_method="h", h_opts=h_opts, **kwargs)
                 if not average_reps
-                else np.mean(treesample.pi(pi_method="h", h_opts=h_opts, **kwargs))
+                else np.mean(
+                    treesample.pi(pi_method="h", h_opts=h_opts, **kwargs)
+                )
             )
         elif stat == "pi_nei":
             out[:, statidx] = (
@@ -900,7 +931,9 @@ def main():
     npop = 10
     nchrom = 10
     host_Nm = 2.6666
-    population_config = [ms.PopulationConfiguration(nchrom) for _ in range(npop)]
+    population_config = [
+        ms.PopulationConfiguration(nchrom) for _ in range(npop)
+    ]
 
     populations = np.repeat(np.arange(npop), nchrom)
     test_target = sim(
