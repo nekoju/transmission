@@ -239,6 +239,12 @@ def test_num_mutants(expected, double_replicate):
         },
     ],
 )
-def test_polymorphic(expected, double_replicate):
+def test_polymorphic_two_reps(expected, double_replicate):
     test = double_replicate.polymorphic()
     assert hash(frozenset(expected)) == hash(frozenset(test))
+
+
+@pytest.mark.parametrize("expected", [np.array([5, 7])])
+def test_segsites_two_reps(expected, double_replicate):
+    test = double_replicate.segsites()
+    assert all(test == expected)

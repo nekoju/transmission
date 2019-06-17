@@ -59,3 +59,7 @@
 - Updated README.md to include information on running a Jupyter notebook
   server from the Docker image.
 
+# 0.0.8
+
+- Tested Sample.segsites()
+
