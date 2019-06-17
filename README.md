@@ -61,7 +61,8 @@ locally installed python modules that conflicted with those in the container.
 I have had some difficulty compiling rpy2 on my platform (MacOS Mojave).
 This may or may not still be the case, but if you wish to avoid any problems
 associated with setting up transmission on your machine, it is possible to
-run a Jupyter server from the Docker image.
+run a Jupyter server from the Docker image. First, launch Docker on your
+machine and then run, e.g.,
 
 ```
 docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes \
@@ -69,8 +70,8 @@ docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes \
 ```
 
 Omit `-e JUPYTER_ENEABLE_LAB=yes` if you are going to use a vanilla notebook. 
-Then you can just open `<hostname>:8888/` and enter the token that appears in
-the terminal and anything saved to `~/work` 
+Then you can just open `<hostname>:8888/` in a browser and enter the token that
+appears in the terminal and anything saved to `~/work` 
 on the container will appear in `</path/to/local/dir>` (and vice-versa).
 For more information on running Jupyter Docker containers, go to [https://github.com/jupyter/docker-stacks].
 
