@@ -6,8 +6,8 @@ import pypandoc
 
 pypandoc.convert_file("README.md", "rst", outputfile="README.rst")
 setup(
-    name="transmission",
-    version="0.0.8",
+    name="transmission-popgen",
+    version="0.0.9",
     py_modules=["transmission"],
     description=(
         "Tools for inferring symbiont transmission mode from"
