@@ -1,5 +1,11 @@
 # Transmission: A tool for inferring symbiont transmission mode from metagenomic data
 
+## Installation
+
+Install r package abc in the usual way, then install Transmission with
+
+`pip install transmission-popgen`
+
 
 ## Generating simulated summary statistics
 
