@@ -69,7 +69,7 @@ docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes \
     -v </path/to/local/dir>a:/home/jovyan/work mpjuers/transmission:<version>
 ```
 
-Omit `-e JUPYTER_ENEABLE_LAB=yes` if you are going to use a vanilla notebook. 
+Omit `-e JUPYTER_ENEABLE_LAB=yes` if you are going to use a vanilla notebook rather than Jupyter Lab. 
 Then you can just open `<hostname>:8888/` in a browser and enter the token that
 appears in the terminal and anything saved to `~/work` 
 on the container will appear in `</path/to/local/dir>` (and vice-versa).
