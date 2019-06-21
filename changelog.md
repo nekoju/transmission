@@ -49,7 +49,7 @@
 
 - Fixed a small syntax error.
 
-# 0.0.7
+## 0.0.7
 
 - Changed host_theta to reflect proposal.
 - Added host_source to sim() and ms_simulate()
@@ -59,7 +59,9 @@
 - Updated README.md to include information on running a Jupyter notebook
   server from the Docker image.
 
-# 0.0.8
+## 0.0.8
 
 - Tested Sample.segsites()
+
+## 0.0.8
 
