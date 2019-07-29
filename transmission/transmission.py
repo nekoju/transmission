@@ -816,16 +816,10 @@ def sim(
     """
 
     eta, tau, rho = params
-    if theta_source == "mt":
-        a = rho
-    elif theta_source == "nuc":
-        a = 2.0
-    else:
-        raise ValueError("theta_source must be 'mt' or 'nuc'")
     A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
     B = 2 * rho * (1 - rho) * (A + rho)
     symbiont_Nm = np.true_divide(host_Nm, 2 * B)
-    symbiont_theta = np.true_divide(10 ** eta * host_theta, a * 2 * B)
+    symbiont_theta = np.true_divide(10 ** eta * host_theta, 2 * B)
     num_populations = len(population_config)
     migration = np.full(
         (num_populations, num_populations),
