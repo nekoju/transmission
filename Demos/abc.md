@@ -5,7 +5,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.1'
-      jupytext_version: 1.1.2
+      jupytext_version: 1.1.3
   kernelspec:
     display_name: transmission
     language: python
@@ -157,6 +157,6 @@ _ = ax3.set(xlabel=r'$\rho$')
 ```python
 # Run as script to save images.
 if __name__ == '__main__':
-    fig.savefig('Figures/density.pdf')
-    fig.savefig('Figures/density.png')
+    density_fig.savefig('Figures/density.pdf')
+    density_fig.savefig('Figures/density.png')
 ```
