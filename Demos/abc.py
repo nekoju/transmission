@@ -69,15 +69,10 @@ rho = 0.55  # The fraction of the population that is female.
 prior_seed = 3
 random_seed = 3
 host_theta = 1        # Estimated from the host mitochondria.
-<<<<<<< Updated upstream
-npop = 30             # Number of populations
-nchrom = 24           # Number of chromosomes sampled from each population.
-=======
 npop = 10             # Number of populations
 nchrom = 10           # Number of chromosomes sampled from each population.
->>>>>>> Stashed changes
 host_Nm = 2
-num_replicates = 30
+num_replicates = 25
 
 # Create populations using msprime API
 population_config = [ms.PopulationConfiguration(nchrom)
@@ -111,33 +106,26 @@ target_df
 # according to whatever priors you wish.
 
 # %%
-<<<<<<< Updated upstream
-with open('../Data/priors_s-0-0.1_t-1-1_r-10-10_1e6.pickle', 'rb') as file:
-    priors_array = pickle.load(file)
-priors = pd.DataFrame.from_records(priors_array)
-priors.head()  # Note: sigma should be eta. This has been corrected in
-               # the software.
-priors.rename(columns={'sigma': 'eta'}, inplace=True)
-=======
 # with open('test.pickle', 'rb') as file:
 #     priors_array = pickle.load(file)
 # priors = pd.DataFrame.from_records(priors_array)
 # priors.head()  # Note: sigma should be eta. This has been corrected in
 #                # the software.
 
-priors = memory.cache(txmn.ms_simulate)(
-    nchrom=10,
-    num_populations=10,
-    host_theta=1,
-    host_Nm=2,
-    num_simulations=1000,
-    num_replicates=10,
-    prior_seed=3,
-    progress_bar=True,
-    random_seed=3
+priors = pd.DataFrame.from_records(
+    memory.cache(txmn.ms_simulate)(
+        nchrom=10,
+        num_populations=10,
+        host_theta=1,
+        host_Nm=2,
+        num_simulations=1000,
+        num_replicates=10,
+        prior_seed=3,
+        progress_bar=True,
+        random_seed=3
+    )
 )
 # priors.rename(columns={'sigma': 'eta'}, inplace=True)
->>>>>>> Stashed changes
 
 abc_out = txmn.Abc(
     target=simulated_target[0:3],  # Get only the summary statistics from
@@ -145,8 +133,9 @@ abc_out = txmn.Abc(
     # For now, Transmission isn't made to work directly with DataFrames,
     # instead, they must be changed to record arrays.
     param = priors[['eta', 'tau', 'rho']].to_records(index=False),
-    sumstat = priors[['fst_mean', 'fst_sd', 'pi_h']].to_records(index=False)
-)  
+    sumstat = priors[['fst_mean', 'fst_sd', 'pi_h']].to_records(index=False),
+    tol=0.40
+)
 
 # %% [markdown]
 # We can check out some summary statistics for our model.
