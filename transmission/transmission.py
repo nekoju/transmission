@@ -813,7 +813,7 @@ def sim(
     A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
     B = 2 * rho * (1 - rho) * (A + rho)
     symbiont_Nm = np.true_divide(host_Nm * rho, 2 * B)
-    symbiont_theta = np.true_divide(10 ** eta * host_theta * rho, 2 * B)
+    symbiont_theta = np.true_divide(10 ** eta * host_theta, 2 * B)
     num_populations = len(population_config)
     migration = np.full(
         (num_populations, num_populations),
