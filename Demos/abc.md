@@ -132,27 +132,21 @@ print(abc_out.summary())
 density_fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(10, 8))
 
 _ = ax1.set_xlim(-1, 1)
-_ = x_eta = np.linspace(stats.norm.ppf(0.01, scale=0.1),
-                        stats.norm.ppf(0.99, scale=0.1),
-                        100)
+_ = x_eta = np.linspace(-1, 1, 100)
 _ = eta_posterior_density = stats.gaussian_kde(abc_out.adj_values['eta'])
 _ = ax1.plot(x_eta, stats.norm.pdf(x_eta, scale=0.1), 'r-')
 _ = ax1.plot(x_eta, eta_posterior_density(x_eta), 'b-')
 _ = ax1.set(xlabel=r'$\eta$', ylabel='Density')
 
 _ = ax2.set_xlim(0, 1)
-_ = x_tau = np.linspace(stats.beta.ppf(0.01, a=1, b=1),
-                        stats.beta.ppf(0.99, a=1, b=1),
-                        100)
+_ = x_tau = np.linspace(0, 1, 100)
 _ = tau_posterior_density = stats.gaussian_kde(abc_out.adj_values['tau'])
 _ = ax2.plot(x_tau, stats.beta.pdf(x_tau, a=1, b=1), 'r-')
 _ = ax2.plot(x_tau, tau_posterior_density(x_tau), 'b-')
 _ = ax2.set(xlabel=r'$\tau$')
 
 _ = ax3.set_xlim(0, 1)
-_ = x_rho = np.linspace(stats.beta.ppf(0.01, a=10, b=10),
-                        stats.beta.ppf(0.99, a=10, b=10),
-                        100)
+_ = x_rho = np.linspace(0, 1, 100)
 _ = rho_posterior_density = stats.gaussian_kde(abc_out.adj_values['rho'])
 _ = ax3.plot(x_rho, stats.beta.pdf(x_rho, a=10, b=10), 'r-')
 _ = ax3.plot(x_rho, rho_posterior_density(x_rho), 'b-')
