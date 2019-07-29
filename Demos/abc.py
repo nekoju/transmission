@@ -38,12 +38,11 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-memory = Memory("./Cache", verbose=0)
+memory = Memory('./Cache', verbose=0)
 # Use memory() as a decorator to cache
 
 # Show all output, not just last command.
 from IPython.core.interactiveshell import InteractiveShell
-
 InteractiveShell.ast_node_interactivity = "all"
 
 # %matplotlib inline
@@ -63,9 +62,9 @@ InteractiveShell.ast_node_interactivity = "all"
 
 # %% {"node_exists": true, "node_name": "e5bcf2f5d92446df854eeb3cc4eadbd5"}
 eta = 0.15  # Exponent of 10 representing the multiplicative difference
-# between the host's mutation rate and the symbiont's.
+            # between the host's mutation rate and the symbiont's.
 tau = 0.75  # The fraction of new infections that result from vertical
-# transmission.
+            # transmission.
 rho = 0.55  # The fraction of the population that is female.
 
 
@@ -73,15 +72,16 @@ prior_seed = 3
 random_seed = 3
 # It is probably best to estimate host_theta per population rather than for
 # the whole metapopulation.
-host_theta = 1  # Estimated from the host markers.
-npop = 30  # Number of populations
-nchrom = 24  # Number of chromosomes sampled from each population.
-host_Nm = 2  # Estimated from host markers.
+host_theta = 1        # Estimated from the host markers.
+npop = 30             # Number of populations
+nchrom = 24           # Number of chromosomes sampled from each population.
+host_Nm = 2           # Estimated from host markers.
 num_replicates = 30
 
 # Create populations using msprime API
-population_config = [ms.PopulationConfiguration(nchrom) for _ in range(npop)]
-# Gives population identity (0 -- npop - 1) to each sampled
+population_config = [ms.PopulationConfiguration(nchrom)
+                     for _ in range(npop)]
+# Gives population identity (0 -- npop - 1) to each sampled 
 # chromosome, 0, 1, 2, ...
 populations = np.repeat(range(npop), nchrom)
 
@@ -95,13 +95,12 @@ simulated_target = memory.cache(txmn.sim)(
     populations=populations,
     stats=("fst_mean", "fst_sd", "pi_h"),
     num_replicates=num_replicates,
-    random_seed=random_seed,
+    random_seed=random_seed
 )
-
-target_df = pd.DataFrame(
-    simulated_target.reshape((1, 6)),
-    columns=("fst_mean", "fst_sd", "pi_h", "eta", "tau", "rho"),
-)
+                          
+target_df = pd.DataFrame(simulated_target.reshape((1, 6)), 
+                         columns=("fst_mean", "fst_sd", "pi_h",
+                                  "eta", "tau", "rho"))
 target_df
 
 # %% [markdown]
@@ -111,22 +110,22 @@ target_df
 # according to whatever priors you wish.
 
 # %% {"node_exists": false, "node_name": "b7020baf0c384d169796a22066a14435"}
-with open("../Data/priors_s-0-0.1_t-1-1_r-10-10_1e6.pickle", "rb") as file:
+with open('../Data/priors_s-0-0.1_t-1-1_r-10-10_1e6.pickle', 'rb') as file:
     priors_array = pickle.load(file)
 
 priors = pd.DataFrame.from_records(priors_array)
-priors.rename(columns={"sigma": "eta"}, inplace=True)
+priors.rename(columns={'sigma': 'eta'}, inplace=True)
 priors.head()  # Note: sigma should be eta. This has been corrected in
-# the software.
+               # the software.
 
 
 abc_out = txmn.Abc(
     target=simulated_target[0:3],  # Get only the summary statistics from
-    # target.
+                                   # target.
     # For now, Transmission isn't made to work directly with DataFrames,
     # instead, they must be changed to record arrays.
-    param=priors[["eta", "tau", "rho"]].to_records(index=False),
-    sumstat=priors[["fst_mean", "fst_sd", "pi_h"]].to_records(index=False),
+    param = priors[['eta', 'tau', 'rho']].to_records(index=False),
+    sumstat = priors[['fst_mean', 'fst_sd', 'pi_h']].to_records(index=False)
 )
 
 # %% [markdown]
@@ -139,37 +138,26 @@ print(abc_out.summary())
 density_fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(10, 8))
 
 _ = ax1.set_xlim(-1, 1)
-_ = x_eta = np.linspace(
-    stats.norm.ppf(0.01, scale=0.1), stats.norm.ppf(0.99, scale=0.1), 100
-)
-_ = eta_posterior_density = stats.gaussian_kde(abc_out.adj_values["eta"])
-_ = ax1.plot(x_eta, stats.norm.pdf(x_eta, scale=0.1), "r-")
-_ = ax1.plot(x_eta, eta_posterior_density(x_eta), "b-")
-_ = ax1.set(xlabel=r"$\eta$", ylabel="Density")
+_ = x_eta = np.linspace(-1, 1, 100)
+_ = eta_posterior_density = stats.gaussian_kde(abc_out.adj_values['eta'])
+_ = ax1.plot(x_eta, stats.norm.pdf(x_eta, scale=0.1), 'r-')
+_ = ax1.plot(x_eta, eta_posterior_density(x_eta), 'b-')
+_ = ax1.set(xlabel=r'$\eta$', ylabel='Density')
 
 _ = ax2.set_xlim(0, 1)
-_ = x_tau = np.linspace(
-    stats.beta.ppf(0.01, a=1, b=1), stats.beta.ppf(0.99, a=1, b=1), 100
-)
-_ = tau_posterior_density = stats.gaussian_kde(abc_out.adj_values["tau"])
-_ = ax2.plot(x_tau, stats.beta.pdf(x_tau, a=1, b=1), "r-")
-_ = ax2.plot(x_tau, tau_posterior_density(x_tau), "b-")
-_ = ax2.set(xlabel=r"$\tau$")
+_ = x_tau = np.linspace(0, 1, 100)
+_ = tau_posterior_density = stats.gaussian_kde(abc_out.adj_values['tau'])
+_ = ax2.plot(x_tau, stats.beta.pdf(x_tau, a=1, b=1), 'r-')
+_ = ax2.plot(x_tau, tau_posterior_density(x_tau), 'b-')
+_ = ax2.set(xlabel=r'$\tau$')
 
 _ = ax3.set_xlim(0, 1)
-_ = x_rho = np.linspace(
-    stats.beta.ppf(0.01, a=10, b=10), stats.beta.ppf(0.99, a=10, b=10), 100
-)
-_ = rho_posterior_density = stats.gaussian_kde(abc_out.adj_values["rho"])
-_ = ax3.plot(x_rho, stats.beta.pdf(x_rho, a=10, b=10), "r-")
-_ = ax3.plot(x_rho, rho_posterior_density(x_rho), "b-")
-_ = ax3.set(xlabel=r"$\rho$")
+_ = x_rho = np.linspace(0, 1, 100)
+_ = rho_posterior_density = stats.gaussian_kde(abc_out.adj_values['rho'])
+_ = ax3.plot(x_rho, stats.beta.pdf(x_rho, a=10, b=10), 'r-')
+_ = ax3.plot(x_rho, rho_posterior_density(x_rho), 'b-')
+_ = ax3.set(xlabel=r'$\rho$')
 
-density_fig.subplots_adjust(wspace=0.25)
-
-# %% {"node_exists": false, "node_name": "9550e88964fa4c7d8c5c548d03784a6d"}
-density_fig.savefig("Figures/density.png")
-density_fig.savefig("Figures/density.pdf")
 
 density_fig.savefig('Figures/density.pdf')
 density_fig.savefig('Figures/density.png')
