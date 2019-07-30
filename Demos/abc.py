@@ -54,7 +54,10 @@ InteractiveShell.ast_node_interactivity = "all"
 # %reload_ext autoreload
 # %autoreload 2
 # %aimport transmission
-# %set_env PYTHONBREAKPOINT=IPython.core.debugger.set_trace
+
+# Show all output, not just last command.
+from IPython.core.interactiveshell import InteractiveShell
+InteractiveShell.ast_node_interactivity = "all"
 
 memory = Memory(location="./Cache", verbose=0)
 

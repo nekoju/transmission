@@ -51,7 +51,6 @@ InteractiveShell.ast_node_interactivity = "all"
 %reload_ext autoreload
 %autoreload 2
 %aimport transmission
-<<<<<<< HEAD
 
 # Show all output, not just last command.
 from IPython.core.interactiveshell import InteractiveShell

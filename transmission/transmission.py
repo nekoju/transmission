@@ -162,10 +162,15 @@ def ms_simulate(
         pool = Pool(processes=num_cores)
         if progress_bar:
             out = np.array(
-                list(tqdm(pool.imap(simpartial, params), total=len(params)))
+                list(
+                    tqdm(
+                        pool.imap(simpartial, params, chunksize=10),
+                        total=len(params)
+                    )
+                )
             )
         else:
-            out = np.array(list(pool.imap(simpartial, params)))
+            out = np.array(list(pool.imap(simpartial, params, chunksize=10)))
     else:
         out = np.apply_along_axis(simpartial, 1, params)
     out = np.core.records.fromarrays(out.T, dtype=structure)
