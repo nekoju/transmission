@@ -24,7 +24,7 @@
 # %% [markdown]
 # This is a live document. Install Jupytext and open as a Jupyter notebook.
 
-# %%
+# %% {"node_exists": true, "node_name": "8b3d4268f1de4428874f8852f23e58fe"}
 from __future__ import print_function, division
 
 import itertools
@@ -38,16 +38,20 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-# %matplotlib inline
-
-# Authmatically reload transmission. Remove after debugging.
-# %reload_ext autoreload
-# %autoreload 2
-# %aimport transmission
+memory = Memory('./Cache', verbose=0)
+# Use memory() as a decorator to cache
 
 # Show all output, not just last command.
 from IPython.core.interactiveshell import InteractiveShell
 InteractiveShell.ast_node_interactivity = "all"
+
+# %matplotlib inline
+
+# Automatically reload transmission. Remove after debugging.
+# %reload_ext autoreload
+# %autoreload 2
+# %aimport transmission
+# %set_env PYTHONBREAKPOINT=IPython.core.debugger.set_trace
 
 memory = Memory(location="./Cache", verbose=0)
 
@@ -58,7 +62,7 @@ memory = Memory(location="./Cache", verbose=0)
 #  Generally, it is called by `ms_simulate()` and there is no reason to call
 #  it directly, but here we can use it for a proof of concept.
 
-# %%
+# %% {"node_exists": true, "node_name": "e5bcf2f5d92446df854eeb3cc4eadbd5"}
 eta = 0.15  # Exponent of 10 representing the multiplicative difference
             # between the host's mutation rate and the symbiont's.
 tau = 0.75  # The fraction of new infections that result from vertical
@@ -140,10 +144,10 @@ abc_out = txmn.Abc(
 # %% [markdown]
 # We can check out some summary statistics for our model.
 
-# %%
+# %% {"node_exists": false, "node_name": "e03cd28f35364313a34971a5b578a442"}
 print(abc_out.summary())
 
-# %%
+# %% {"node_exists": false, "node_name": "e25571adfba84e018fa8273819f5e51d"}
 density_fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(10, 8))
 
 _ = ax1.set_xlim(-1, 1)
@@ -168,8 +172,5 @@ _ = ax3.plot(x_rho, rho_posterior_density(x_rho), 'b-')
 _ = ax3.set(xlabel=r'$\rho$')
 
 
-# %%
-# Run as script to save images.
-if __name__ == '__main__':
-    density_fig.savefig('Figures/density.pdf')
-    density_fig.savefig('Figures/density.png')
+density_fig.savefig('Figures/density.pdf')
+density_fig.savefig('Figures/density.png')
