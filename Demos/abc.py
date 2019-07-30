@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.2'
-#       jupytext_version: 1.1.3
+#       jupytext_version: 1.2.1
 #   kernelspec:
 #     display_name: transmission
 #     language: python
@@ -30,6 +30,7 @@ from __future__ import print_function, division
 import itertools
 import pickle
 
+from joblib import Memory
 import msprime as ms
 import matplotlib.pyplot as plt
 import transmission as txmn
@@ -47,6 +48,8 @@ from scipy import stats
 # Show all output, not just last command.
 from IPython.core.interactiveshell import InteractiveShell
 InteractiveShell.ast_node_interactivity = "all"
+
+memory = Memory(location="./Cache", verbose=0)
 
 
 # %% markdown [markdown]
@@ -66,8 +69,13 @@ rho = 0.55  # The fraction of the population that is female.
 prior_seed = 3
 random_seed = 3
 host_theta = 1        # Estimated from the host mitochondria.
+<<<<<<< Updated upstream
 npop = 30             # Number of populations
 nchrom = 24           # Number of chromosomes sampled from each population.
+=======
+npop = 10             # Number of populations
+nchrom = 10           # Number of chromosomes sampled from each population.
+>>>>>>> Stashed changes
 host_Nm = 2
 num_replicates = 30
 
@@ -80,7 +88,7 @@ populations = np.repeat(range(npop), nchrom)
 
 # The following takes a minute or so. We are generating a target using the
 # above parameters.
-simulated_target = txmn.sim(
+simulated_target = memory.cache(txmn.sim)(
     (eta, tau, rho),
     host_theta=host_theta,
     host_Nm=host_Nm,
@@ -103,12 +111,33 @@ target_df
 # according to whatever priors you wish.
 
 # %%
+<<<<<<< Updated upstream
 with open('../Data/priors_s-0-0.1_t-1-1_r-10-10_1e6.pickle', 'rb') as file:
     priors_array = pickle.load(file)
 priors = pd.DataFrame.from_records(priors_array)
 priors.head()  # Note: sigma should be eta. This has been corrected in
                # the software.
 priors.rename(columns={'sigma': 'eta'}, inplace=True)
+=======
+# with open('test.pickle', 'rb') as file:
+#     priors_array = pickle.load(file)
+# priors = pd.DataFrame.from_records(priors_array)
+# priors.head()  # Note: sigma should be eta. This has been corrected in
+#                # the software.
+
+priors = memory.cache(txmn.ms_simulate)(
+    nchrom=10,
+    num_populations=10,
+    host_theta=1,
+    host_Nm=2,
+    num_simulations=1000,
+    num_replicates=10,
+    prior_seed=3,
+    progress_bar=True,
+    random_seed=3
+)
+# priors.rename(columns={'sigma': 'eta'}, inplace=True)
+>>>>>>> Stashed changes
 
 abc_out = txmn.Abc(
     target=simulated_target[0:3],  # Get only the summary statistics from

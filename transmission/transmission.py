@@ -30,7 +30,7 @@ import rpy2.robjects as robjects
 import rpy2.robjects.numpy2ri as numpy2ri
 from rpy2.robjects.packages import importr
 import rpy2.robjects.vectors as vectors
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 
 
 class Abc(object):
