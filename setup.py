@@ -19,7 +19,14 @@ setup(
     license="GPL>=3",
     packages=find_packages(),
     include_package_data=True,
-    install_requires=["click", "msprime", "numpy", "rpy2", "tqdm"],
+    install_requires=[
+        "click",
+        "msprime",
+        "numpy",
+        "rpy2",
+        "tqdm",
+        "multiprocess",
+    ],
     entry_points="""
         [console_scripts]
         transmission-priorgen=transmission.cli_tools:simulate_prior_stats

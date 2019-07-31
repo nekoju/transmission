@@ -68,3 +68,4 @@
 ## 0.0.11
 
 - Worked on fixing math and generating new priors for demo.
+- Enable multiprocessing within module.

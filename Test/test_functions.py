@@ -21,6 +21,7 @@ import msprime as ms
 import numpy as np
 import pytest
 import transmission as trans
+import transmission.workers
 
 
 @pytest.mark.parametrize(
@@ -30,7 +31,7 @@ def test_sim_fst(Nm, tau, rho):
     nchrom = 24
     d = 10
     pops = [ms.PopulationConfiguration(nchrom) for _ in range(d)]
-    data = trans.sim(
+    data = transmission.workers.sim(
         params=(0, tau, rho),
         host_theta=1,
         host_Nm=Nm,

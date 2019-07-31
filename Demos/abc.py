@@ -38,6 +38,9 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+import transmission.classes
+import transmission.workers
+
 memory = Memory('./Cache', verbose=0)
 # Use memory() as a decorator to cache
 
@@ -87,7 +90,7 @@ populations = np.repeat(range(npop), nchrom)
 
 # The following takes a minute or so. We are generating a target using the
 # above parameters.
-simulated_target = memory.cache(txmn.sim)(
+simulated_target = memory.cache(transmission.workers.sim)(
     (eta, tau, rho),
     host_theta=host_theta,
     host_Nm=host_Nm,
@@ -131,7 +134,7 @@ priors = pd.DataFrame.from_records(
 )
 # priors.rename(columns={'sigma': 'eta'}, inplace=True)
 
-abc_out = txmn.Abc(
+abc_out = transmission.classes.Abc(
     target=simulated_target[0:3],  # Get only the summary statistics from
                                    # target.
     # For now, Transmission isn't made to work directly with DataFrames,

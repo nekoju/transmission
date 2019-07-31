@@ -20,7 +20,7 @@
 import msprime as ms
 import numpy as np
 import pytest
-from transmission.transmission import Sample
+from transmission.classes import Sample
 
 num_samples = 4
 
