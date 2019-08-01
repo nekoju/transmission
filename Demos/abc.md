@@ -127,7 +127,7 @@ priors = pd.DataFrame.from_records(
         num_populations=npop,
         host_theta=host_theta,
         host_Nm=host_Nm,
-        num_simulations=20,
+        num_simulations=100,
         num_replicates=num_replicates,
         prior_seed=3,
         progress_bar=True,
@@ -135,7 +135,9 @@ priors = pd.DataFrame.from_records(
     )
 )
 priors.rename(columns={'sigma': 'eta'}, inplace=True)
+```
 
+```python
 abc_out = txmn.Abc(
     target=simulated_target[0:3],  # Get only the summary statistics from
                                    # target.
@@ -180,4 +182,8 @@ _ = ax3.set(xlabel=r'$\rho$')
 
 density_fig.savefig('Figures/density.pdf')
 density_fig.savefig('Figures/density.png')
+```
+
+```python
+
 ```

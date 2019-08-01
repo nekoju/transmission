@@ -161,8 +161,7 @@ def ms_simulate(
         if num_cores == "auto":
             num_cores = cpu_count()
         chunksize = ceil(num_simulations / num_cores)
-        print("chunksize=" + str(chunksize))
-        with get_context("spawn").Pool() as pool:
+        with get_context("spawn").Pool(processes=num_cores) as pool:
             if progress_bar:
                 out = np.array(
                     list(
