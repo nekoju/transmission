@@ -161,7 +161,7 @@ def generate_priors(
         # Switching here allows autodetection.
         if num_cores == "auto":
             num_cores = cpu_count()
-        chunksize = ceil(num_simulations / num_cores)
+        chunksize = 10 
         with get_context("spawn").Pool(processes=num_cores) as pool:
             if progress_bar:
                 out = np.array(

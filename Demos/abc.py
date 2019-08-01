@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.2'
-#       jupytext_version: 1.1.2
+#       jupytext_version: 1.2.1
 #   kernelspec:
 #     display_name: transmission
 #     language: python
@@ -33,11 +33,14 @@ import pickle
 from joblib import Memory
 import msprime as ms
 import matplotlib.pyplot as plt
-import transmission as txmn
 import numpy as np
 import pandas as pd
 from scipy import stats
+import transmission as txmn
+from transmission.workers import _sim
 
+
+import os
 memory = Memory('./Cache', verbose=0)
 # Use memory() as a decorator to cache
 
@@ -90,7 +93,7 @@ populations = np.repeat(range(npop), nchrom)
 
 # The following takes a minute or so. We are generating a target using the
 # above parameters.
-simulated_target = memory.cache(txmn._sim)(
+simulated_target = memory.cache(_sim)(
     (eta, tau, rho),
     host_theta=host_theta,
     host_Nm=host_Nm,
@@ -119,7 +122,7 @@ priors = pd.DataFrame.from_records(
         num_populations=npop,
         host_theta=host_theta,
         host_Nm=host_Nm,
-        num_simulations=100,
+        num_simulations=20,
         num_replicates=num_replicates,
         prior_seed=3,
         progress_bar=True,
