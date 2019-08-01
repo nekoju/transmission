@@ -19,9 +19,10 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import functools
-from multiprocess import Pool, cpu_count
+from math import ceil
 
 import msprime as ms
+from multiprocessing import get_context, cpu_count
 import numpy as np
 from tqdm.autonotebook import tqdm
 
@@ -159,18 +160,28 @@ def ms_simulate(
         # Switching here allows autodetection.
         if num_cores == "auto":
             num_cores = cpu_count()
-        pool = Pool(processes=num_cores)
-        if progress_bar:
-            out = np.array(
-                list(
-                    tqdm(
-                        pool.imap(simpartial, params, chunksize=10),
-                        total=len(params)
+        chunksize = ceil(num_simulations / num_cores)
+        print("chunksize=" + str(chunksize))
+        with get_context("spawn").Pool() as pool:
+            if progress_bar:
+                out = np.array(
+                    list(
+                        tqdm(
+                            pool.imap_unordered(
+                                simpartial, params, chunksize=chunksize
+                            ),
+                            total=len(params),
+                        )
                     )
                 )
-            )
-        else:
-            out = np.array(list(pool.imap(simpartial, params, chunksize=10)))
+            else:
+                out = np.array(
+                    list(
+                        pool.imap_unordered(
+                            simpartial, params, chunksize=chunksize
+                        )
+                    )
+                )
     else:
         out = np.apply_along_axis(simpartial, 1, params)
     out = np.core.records.fromarrays(out.T, dtype=structure)

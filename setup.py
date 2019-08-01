@@ -25,7 +25,6 @@ setup(
         "numpy",
         "rpy2",
         "tqdm",
-        "multiprocess",
     ],
     entry_points="""
         [console_scripts]

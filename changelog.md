@@ -63,8 +63,6 @@
 
 - Tested Sample.segsites()
 
-## 0.0.8
-
 ## 0.0.11
 
 - Worked on fixing math and generating new priors for demo.
