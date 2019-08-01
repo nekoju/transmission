@@ -4,7 +4,7 @@ import numpy as np
 from transmission.classes import MetaSample
 
 
-def sim(
+def _sim(
     params,
     host_theta,
     host_Nm,

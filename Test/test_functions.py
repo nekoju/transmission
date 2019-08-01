@@ -31,7 +31,7 @@ def test_sim_fst(Nm, tau, rho):
     nchrom = 24
     d = 10
     pops = [ms.PopulationConfiguration(nchrom) for _ in range(d)]
-    data = transmission.workers.sim(
+    data = transmission.workers._sim(
         params=(0, tau, rho),
         host_theta=1,
         host_Nm=Nm,

@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
     # The following takes a minute or so. We are generating a target using the
     # above parameters.
-    simulated_target = txmn.sim(
+    simulated_target = txmn._sim(
         (eta, tau, rho),
         host_theta=host_theta,
         host_Nm=host_Nm,

@@ -18,11 +18,11 @@
 
 ## 0.0.4a
 
-- Previous release had a typo in sim().
+- Previous release had a typo in _sim().
 
 ## 0.0.4b
 
-- Fixed math behind parameter estimation, N/Ne problem in sim().
+- Fixed math behind parameter estimation, N/Ne problem in _sim().
 
 ## 0.0.4c
 
@@ -43,7 +43,7 @@
 ## 0.0.6
 
 - Added demos.
-- Added num_sites, theta_w to sim().
+- Added num_sites, theta_w to _sim().
 
 ## 0.0.6a
 
@@ -52,7 +52,7 @@
 ## 0.0.7
 
 - Changed host_theta to reflect proposal.
-- Added host_source to sim() and generate_priors()
+- Added host_source to _sim() and generate_priors()
 - Changed test_sim_fst() to have 0.10 rtol.
 - Added tests for "nei" and "tajima" Sample.pi() methods, as well as
   Sample.num_mutants() and Sample.polymorphic()

@@ -18,6 +18,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+
 import functools
 from math import ceil
 
@@ -26,7 +27,7 @@ from multiprocessing import get_context, cpu_count
 import numpy as np
 from tqdm.autonotebook import tqdm
 
-from transmission.workers import sim
+from transmission.workers import _sim
 
 
 def fst(Nm, tau, rho):
@@ -140,7 +141,7 @@ def generate_priors(
     )
     params = np.array([eta, tau, rho]).T
     simpartial = functools.partial(
-        sim,
+        _sim,
         host_theta=host_theta,
         host_Nm=host_Nm,
         population_config=population_config,
