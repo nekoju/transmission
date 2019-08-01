@@ -13,7 +13,7 @@ def sim(
     **kwargs
 ):
     """
-    Runs actual simulation with ms. Intended as helper for ms_simulate().
+    Runs actual simulation with ms. Intended as helper for generate_priors().
 
     At top level for picklability (for multiprocessing).
 

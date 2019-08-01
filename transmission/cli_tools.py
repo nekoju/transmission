@@ -23,7 +23,7 @@ import pickle
 
 import click
 
-from transmission import ms_simulate
+from transmission import generate_priors
 
 
 @click.command()
@@ -160,7 +160,7 @@ def simulate_prior_stats(
         else:
             raise ValueError("num_cores must be 'auto' or int")
 
-    simulation_data = ms_simulate(
+    simulation_data = generate_priors(
         nchrom=nchrom,
         num_populations=num_populations,
         host_theta=host_theta,

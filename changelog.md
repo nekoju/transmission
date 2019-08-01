@@ -52,7 +52,7 @@
 ## 0.0.7
 
 - Changed host_theta to reflect proposal.
-- Added host_source to sim() and ms_simulate()
+- Added host_source to sim() and generate_priors()
 - Changed test_sim_fst() to have 0.10 rtol.
 - Added tests for "nei" and "tajima" Sample.pi() methods, as well as
   Sample.num_mutants() and Sample.polymorphic()

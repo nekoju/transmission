@@ -63,7 +63,7 @@ memory = Memory(location="./Cache", verbose=0)
 <!-- #region markdown {} -->
  First, simulate a data set. The `sim()` function in Transmission is the
  workhorse function that simulates a geneaology given a set of parameters.
- Generally, it is called by `ms_simulate()` and there is no reason to call
+ Generally, it is called by `generate_priors()` and there is no reason to call
  it directly, but here we can use it for a proof of concept.
 <!-- #endregion -->
 
@@ -122,7 +122,7 @@ according to whatever priors you wish.
 #                # the software.
 
 priors = pd.DataFrame.from_records(
-    memory.cache(txmn.ms_simulate)(
+    memory.cache(txmn.generate_priors)(
         nchrom=nchrom,
         num_populations=npop,
         host_theta=host_theta,

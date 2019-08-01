@@ -62,7 +62,7 @@ memory = Memory(location="./Cache", verbose=0)
 # %% markdown [markdown]
 #  First, simulate a data set. The `sim()` function in Transmission is the
 #  workhorse function that simulates a geneaology given a set of parameters.
-#  Generally, it is called by `ms_simulate()` and there is no reason to call
+#  Generally, it is called by `generate_priors()` and there is no reason to call
 #  it directly, but here we can use it for a proof of concept.
 
 # %% {"node_exists": true, "node_name": "e5bcf2f5d92446df854eeb3cc4eadbd5"}
@@ -120,7 +120,7 @@ target_df
 #                # the software.
 
 priors = pd.DataFrame.from_records(
-    memory.cache(txmn.ms_simulate)(
+    memory.cache(txmn.generate_priors)(
         nchrom=nchrom,
         num_populations=npop,
         host_theta=host_theta,

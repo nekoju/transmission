@@ -45,7 +45,7 @@ def fst(Nm, tau, rho):
     return B / (Nm + B)
 
 
-def ms_simulate(
+def generate_priors(
     nchrom,
     num_populations,
     host_theta,
@@ -66,7 +66,7 @@ def ms_simulate(
     Generate random sample summary using msprime for the specified prior
     distributions of tau (vertical transmission rate) and rho (sex ratio).
 
-    From a supplied dict of prior (hyper)parameters, ms_simulate generates a
+    From a supplied dict of prior (hyper)parameters, generate_priors generates a
     num_simulations-tall array of parameters with which to estimate the
     posterior distributions of tau and rho using abc methods. It then draws
     num_replicates coalescent samples for each parameter combination and
