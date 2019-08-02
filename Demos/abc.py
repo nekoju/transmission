@@ -128,6 +128,7 @@ priors = pd.DataFrame.from_records(
         progress_bar=True,
         random_seed=random_seed
     )
+)
 
 # %%
 abc_out = txmn.Abc(
