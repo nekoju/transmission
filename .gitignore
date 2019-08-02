@@ -139,3 +139,4 @@ Demos/Figures
 Demos/Cache
 **/*.tar*
 build
+**/Cache

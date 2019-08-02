@@ -1,8 +1,9 @@
 import msprime as ms
+from multiprocessing import current_process
 import numpy as np
-from os import getpid
+import os
 
-from transmission.classes import MetaSample 
+from transmission.classes import MetaSample
 
 
 def _sim(
@@ -43,7 +44,6 @@ def _sim(
             dictionary.
         **kwargs (): Extra arguments for msprime.simulate().
     """
-
     eta, tau, rho = params
     a = rho if theta_source == "mt" else 1
     A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
