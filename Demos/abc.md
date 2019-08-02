@@ -28,6 +28,7 @@ This is a live document. Install Jupytext and open as a Jupyter notebook.
 from __future__ import print_function, division
 
 import itertools
+import os
 import pickle
 
 from joblib import Memory
@@ -117,20 +118,19 @@ according to whatever priors you wish. Use the Docker image with Singularity for
 
 ```python
 breakpoint()
-if __name__ == "__main__":
-    priors = pd.DataFrame.from_records(
-        memory.cache(txmn.generate_priors)(
-            nchrom=nchrom,
-            num_populations=npop,
-            host_theta=host_theta,
-            host_Nm=host_Nm,
-            num_simulations=100,
-            num_replicates=num_replicates,
-            prior_seed=3,
-            progress_bar=True,
-            random_seed=random_seed
-        )
+priors = pd.DataFrame.from_records(
+    txmn.generate_priors(
+        nchrom=nchrom,
+        num_populations=npop,
+        host_theta=host_theta,
+        host_Nm=host_Nm,
+        num_simulations=100,
+        num_replicates=num_replicates,
+        prior_seed=3,
+        progress_bar=True,
+        random_seed=random_seed
     )
+)
 ```
 
 ```python
