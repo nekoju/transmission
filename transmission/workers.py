@@ -1,7 +1,5 @@
 import msprime as ms
-from multiprocessing import current_process
 import numpy as np
-import os
 
 from transmission.classes import MetaSample
 

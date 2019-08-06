@@ -23,7 +23,7 @@ import functools
 from math import ceil
 
 import msprime as ms
-from multiprocessing import Pool, cpu_count
+from multiprocessing import get_context, cpu_count
 import numpy as np
 from tqdm.autonotebook import tqdm
 
@@ -163,28 +163,26 @@ def generate_priors(
             num_cores = cpu_count()
         limit = ceil(len(params) / num_cores)
         chunksize = 1000 if limit >= 1000 else limit
-        pool = Pool(processes=num_cores)
-        if progress_bar:
-            out = np.array(
-                list(
-                    tqdm(
+        with get_context("spawn").Pool(processes=num_cores) as pool:
+            if progress_bar:
+                out = np.array(
+                    list(
+                        tqdm(
+                            pool.imap_unordered(
+                                simpartial, params, chunksize=chunksize
+                            ),
+                            total=len(params),
+                        )
+                    )
+                )
+            else:
+                out = np.array(
+                    list(
                         pool.imap_unordered(
                             simpartial, params, chunksize=chunksize
-                        ),
-                        total=len(params),
+                        )
                     )
                 )
-            )
-        else:
-            out = np.array(
-                list(
-                    pool.imap_unordered(
-                        simpartial, params, chunksize=chunksize
-                    )
-                )
-            )
-        pool.close()
-        pool.join()
     else:
         out = np.apply_along_axis(simpartial, 1, params)
     out = np.core.records.fromarrays(out.T, dtype=structure)
