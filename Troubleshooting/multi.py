@@ -7,7 +7,11 @@ import timeit
 import sys
 
 
-if __name__ == "__main__":
+def main():
+    try:
+        num_cores = int(sys.argv[1])
+    except ValueError:
+        num_cores = None
 
     out_time = timeit.timeit(
         dedent(
@@ -20,7 +24,7 @@ if __name__ == "__main__":
                 num_simulations=num_simulations,
                 num_replicates=num_replicates,
                 num_cores=num_cores,
-                prior_seed=3,
+                prior_seed=prior_seed,
                 progress_bar=True,
                 random_seed=random_seed,
             )
@@ -44,7 +48,7 @@ if __name__ == "__main__":
             npop = 10  # Number of populations
             nchrom = 10  # Number of chromosomes sampled from each population.
             host_Nm = 2
-            num_replicates = 25
+            num_replicates = 10
             num_simulations = {num_simulations}
             num_cores = {num_cores}
 
@@ -55,12 +59,13 @@ if __name__ == "__main__":
             # Gives population identity (0 -- npop - 1) to each sampled
             # chromosome, 0, 1, 2, ...
             """.format(
-                **{
-                    "num_cores": int(sys.argv[1]),
-                    "num_simulations": int(sys.argv[3]),
-                }
+                **{"num_cores": num_cores, "num_simulations": int(sys.argv[3])}
             )
         ),
         number=int(sys.argv[2]),
     )
     print(out_time)
+
+
+if __name__ == "__main__":
+    main()
