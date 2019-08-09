@@ -140,3 +140,4 @@ Demos/Cache
 **/*.tar*
 build
 **/Cache
+**/profileOutput

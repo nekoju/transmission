@@ -18,13 +18,11 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-
 import functools
 from math import ceil
 
-from memory_profiler import profile
 import msprime as ms
-from multiprocessing import get_context, cpu_count
+from multiprocess import get_context, cpu_count
 import numpy as np
 from tqdm.autonotebook import tqdm
 
@@ -115,8 +113,6 @@ def generate_priors(
             Sample.fst().
     """
 
-    # Number of output statistics plus parameters eta, tau, and rho.
-
     populations = np.repeat(np.arange(num_populations), nchrom)
     population_config = tuple(
         ms.PopulationConfiguration(nchrom) for _ in np.arange(num_populations)
@@ -162,8 +158,7 @@ def generate_priors(
         # Switching here allows autodetection.
         if num_cores == "auto":
             num_cores = cpu_count()
-        limit = ceil(len(params) / num_cores)
-        chunksize = 1000 if limit >= 1000 else limit
+        chunksize = 10
         with get_context("spawn").Pool(processes=num_cores) as pool:
             if progress_bar:
                 out = np.array(

@@ -141,7 +141,7 @@ class Sample(object):
                 which to compute num_mutants.
         """
         # Allows computation of single replicate snps.
-        popdata = self.popdata if not popdata else tuple(popdata for _ in (0,))
+        popdata = self.popdata if not popdata else (popdata,)
         popset = set(populations)
         out = []
         for repidx, replicate in enumerate(popdata):
@@ -257,9 +257,7 @@ class Sample(object):
         valid_outputs = ("which", "num")
         snp_array = np.zeros((self.npop, self.num_replicates), dtype=int)
         which = []
-        for repidx, rep in enumerate(
-            self.num_mutants(populations=self.populations)
-        ):
+        for repidx, rep in enumerate(self.num_mutants(self.populations)):
             snp_array[:, repidx] = np.count_nonzero(rep > threshold, axis=1)
             # np.nonzero returns an array of *coordinates*.
             # Transpose for ordered pairs on rows.
@@ -410,14 +408,14 @@ class MetaSample(Sample):
             summary = (summary,)
         if fst_method == "gst":
             ind = np.where(self.segsites() != 0)[0]
-            h_by_site = tuple(
-                self.h(by_population=True, **h_opts)[i] for i in ind
-            )
-            hs = tuple(
+            h = self.h(by_population=True, **h_opts)
+            h_by_site = (h[i] for i in ind)
+            hs = (
                 np.average(x, axis=0, weights=self.pop_sample_sizes[0])
                 for x in h_by_site
             )
-            ht = tuple(x[0] for x in tuple(self.h(**h_opts)[i] for i in ind))
+            ht = self.h(**h_opts)
+            ht = (x.reshape(-1) for x in ht)
             fst = tuple((1 - np.true_divide(x, y)) for x, y in zip(hs, ht))
             if average_sites:
                 stats = []
