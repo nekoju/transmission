@@ -115,7 +115,6 @@ target_df
 # according to whatever priors you wish. Use the Docker image with Singularity for painless priors on a compute cluster!
 
 # %%
-breakpoint()
 priors = pd.DataFrame.from_records(
     txmn.generate_priors(
         nchrom=nchrom,
