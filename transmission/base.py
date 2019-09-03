@@ -22,7 +22,6 @@
 import functools
 from math import ceil
 
-from memory_profiler import profile
 import msprime as ms
 from multiprocessing import get_context, cpu_count
 import numpy as np
