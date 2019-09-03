@@ -55,6 +55,7 @@ class Sample(object):
         self.npop = 1
         self.pop_sample_sizes = np.array(self.nchrom)
         self.num_replicates = len(self.popdata)
+        self.keep_populations = set(self.populations)
 
     def __str__(self):
         print(
@@ -74,7 +75,11 @@ class Sample(object):
         out = []
         for rep in self.popdata:
             if self.type == "TreeSequence":
-                out.append(rep.genotype_matrix().T)
+                out.append(
+                    rep.genotype_matrix().T[
+                        np.isin(self.populations, tuple(self.keep_populations))
+                    ]
+                )
             else:
                 out.append(rep)
         return out if len(out) > 1 else out[0]
@@ -101,14 +106,29 @@ class Sample(object):
         # populations for portability to MetaSample
         # Each row in harray is a population; each column a snp.
         sample_sizes = (
-            self.pop_sample_sizes
+            self.pop_sample_sizes[
+                0,
+                np.isin(
+                    list(set(self.populations)), list(self.keep_populations)
+                ),
+            ]
             if by_population
-            else np.array([[self.nchrom]])
-        )
+            else np.sum(
+                self.pop_sample_sizes.reshape(1, -1)[
+                    0,
+                    np.isin(
+                        list(set(self.populations)),
+                        list(self.keep_populations),
+                    ),
+                ]
+            )
+        ).reshape(1, -1)
         out = []
         for repidx, replicate in enumerate(self.popdata):
             if replicate.num_sites != 0:
-                num_mutants = self.num_mutants(populations, replicate)[0]
+                num_mutants = self.num_mutants(
+                    by_population=by_population, popdata=replicate
+                )[0]
                 parray = np.true_divide(num_mutants, sample_sizes.T)
                 harray = 2 * parray * (1 - parray)
                 if bias:
@@ -129,7 +149,7 @@ class Sample(object):
         else:
             return np.array(out).T
 
-    def num_mutants(self, populations, popdata=None):
+    def num_mutants(self, by_population=False, popdata=None):
         """
         Returns the number of mutant alleles observed at each site.
         Used by other methods.
@@ -142,22 +162,41 @@ class Sample(object):
         """
         # Allows computation of single replicate snps.
         popdata = self.popdata if not popdata else (popdata,)
-        popset = set(populations)
         out = []
         for repidx, replicate in enumerate(popdata):
-            num_mutants = np.zeros(
-                (len(popset), replicate.num_sites), dtype=int
+            num_mutants = (
+                np.zeros(
+                    (len(self.keep_populations), replicate.num_sites),
+                    dtype=int,
+                )
+                if by_population
+                else np.zeros((1, replicate.num_sites), dtype=int)
             )
             if self.type == "TreeSequence":
                 for siteidx, site in enumerate(replicate.variants()):
-                    for pop in popset:
-                        num_mutants[pop, siteidx] = np.count_nonzero(
-                            site.genotypes[populations == pop]
+                    if by_population:
+                        for pop in self.keep_populations:
+                            num_mutants[pop, siteidx] = np.count_nonzero(
+                                site.genotypes[self.populations == pop]
+                            )
+                    else:
+                        num_mutants[0, siteidx] = np.count_nonzero(
+                            site.genotypes[
+                                np.isin(
+                                    self.populations,
+                                    np.array(list(self.keep_populations)),
+                                )
+                            ]
                         )
             else:
-                for pop in popset:
+                for pop in (
+                    self.keep_populations
+                    if by_population
+                    else set(self.populations)
+                ):
                     num_mutants[pop] = np.count_nonzero(
-                        self.gtmatrix[np.nonzero(populations == pop)], axis=0
+                        self.gtmatrix[np.nonzero(self.populations == pop)],
+                        axis=0,
                     )
             out.append(num_mutants)
         # Return tuple if multiple replicates, otherwise single matrix.
@@ -238,13 +277,16 @@ class Sample(object):
             raise NameError("Unsupported method, {}".format(pi_method))
         return out if out.size > 1 else out[0]
 
-    def polymorphic(self, threshold=0, output=("num", "which")):
+    def polymorphic(
+        self, by_population=False, threshold=0, output=("num", "which")
+    ):
         """
         Returns polymorphism attributes as dict or value.
         Attributes are number of polymorphic sites and index positions of
         polymorphic sites.
 
         Args:
+            by_population (bool): Whether to calculate by population.
             threshold (int): Number of derived alleles
                 above which polymorphism is counted, e.g.,
                 threshold=1 excludes singletons.
@@ -255,9 +297,17 @@ class Sample(object):
                 or a tuple of both (default) returning a dict of both.
         """
         valid_outputs = ("which", "num")
-        snp_array = np.zeros((self.npop, self.num_replicates), dtype=int)
+        snp_array = (
+            np.zeros(
+                (len(self.keep_populations), self.num_replicates), dtype=int
+            )
+            if by_population
+            else np.zeros((1, self.num_replicates), dtype=int)
+        )
         which = []
-        for repidx, rep in enumerate(self.num_mutants(self.populations)):
+        for repidx, rep in enumerate(
+            self.num_mutants(by_population=by_population)
+        ):
             snp_array[:, repidx] = np.count_nonzero(rep > threshold, axis=1)
             # np.nonzero returns an array of *coordinates*.
             # Transpose for ordered pairs on rows.
@@ -306,12 +356,16 @@ class Sample(object):
             else np.zeros((self.nchrom,), dtype=int)
         )
         # populations for portability to MetaSample
-        nchrom = np.bincount(populations)
+        nchrom = np.repeat(np.bincount(populations), self.num_replicates).T
         harmonic_num = np.apply_along_axis(
-            lambda x: np.sum(1 / np.arange(1, x)), 1, nchrom.reshape((-1, 1))
+            lambda x: np.sum(1.0 / np.arange(1, x)), 1, nchrom.reshape((-1, 1))
         )
-        num_polymorphic = self.polymorphic(output="num", threshold=threshold)
-        return num_polymorphic / harmonic_num.reshape((-1, 1))
+        num_polymorphic = self.polymorphic(
+            by_population=by_population, threshold=threshold, output="num"
+        )
+        return num_polymorphic / harmonic_num.reshape(
+            (-1, self.num_replicates)
+        )
 
 
 class MetaSample(Sample):
@@ -330,10 +384,16 @@ class MetaSample(Sample):
             each population.
         populations (np.ndarray): A 1-dimensional np.ndarray of ints
             specifying to which population each sample belongs.
+        keep_populations (np.ndarray): Specifys which populations to keep
+            in analysis. Allows simulation of sampling only a subset of
+            actual populations. Defaults to None, which retains all
+            populations.
 
     """
 
-    def __init__(self, popdata, populations, force_meta=False):
+    def __init__(
+        self, popdata, populations, keep_populations=None, force_meta=False
+    ):
         """
         Args:
             popdata (np.ndarray OR msprime.TreeSequence): A 2D np.ndarray
@@ -349,6 +409,10 @@ class MetaSample(Sample):
                 objects.
             populations (np.ndarray): A 1D np.ndarray of ints specifying to
                 which population each sample belongs.
+            keep_populations (np.ndarray): Specifys which populations to keep
+                in analysis. Allows simulation of sampling only a subset of
+                actual populations. Defaults to None, which retains all
+                populations.
             force_meta (bool): Whether to force a single population to become
                 a metapopulation rather than coercion to Population class.
         """
@@ -377,6 +441,9 @@ class MetaSample(Sample):
             ]
         )
         self.populations = populations
+        self.keep_populations = (
+            set(populations) if keep_populations is None else keep_populations
+        )
 
     def fst(
         self,
@@ -411,7 +478,13 @@ class MetaSample(Sample):
             h = self.h(by_population=True, **h_opts)
             h_by_site = (h[i] for i in ind)
             hs = (
-                np.average(x, axis=0, weights=self.pop_sample_sizes[0])
+                np.average(
+                    x,
+                    axis=0,
+                    weights=self.pop_sample_sizes[
+                        0, tuple(self.keep_populations)
+                    ],
+                )
                 for x in h_by_site
             )
             ht = self.h(**h_opts)
@@ -439,7 +512,8 @@ class MetaSample(Sample):
                         stats = np.array([0.0 for _ in stats])
                 return dict(zip(summary, stats))
             else:
-                return fst
+                # Clean up NaNs
+                return tuple(x[~np.isnan(x)] for x in fst)
         else:
             raise Exception("invalid method {}".format(fst_method))
 

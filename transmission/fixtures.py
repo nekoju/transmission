@@ -23,14 +23,15 @@ import numpy as np
 import pytest
 
 from transmission.classes import Sample
+from transmission.classes import MetaSample
 
 
 @pytest.fixture
-def single_replicate(num_samples=4, populations=np.repeat([0, 1], 2)):
+def single_replicate(num_samples=4):
     """
     Generate a single replicate of two populations with msprime.
     """
-    num_pop = len(set(populations))
+    num_pop = 2
     population_config = [
         ms.PopulationConfiguration(sample_size=num_samples)
         for _ in range(num_pop)
@@ -58,11 +59,11 @@ def single_replicate(num_samples=4, populations=np.repeat([0, 1], 2)):
 
 
 @pytest.fixture
-def double_replicate(num_samples=4, populations=np.repeat([0, 1], 2)):
+def double_replicate(num_samples=4):
     """
     Generate a double replicate of two populations with msprime.
     """
-    num_pop = len(set(populations))
+    num_pop = 2
     population_config = [
         ms.PopulationConfiguration(sample_size=num_samples)
         for _ in range(num_pop)
@@ -99,8 +100,10 @@ def double_replicate(num_samples=4, populations=np.repeat([0, 1], 2)):
 
 
 @pytest.fixture
-def double_replicate_exclude_pop_1(
-    num_samples=4, populations=np.array([0, 0, 0, 0, None, None, None, None])
+def double_replicate_meta_exclude_pop_1(
+    num_samples=4,
+    populations=np.repeat([0, 1], 4),
+    keep_populations=np.array([0]),
 ):
     """
     Generate a double replicate of two populations with msprime.
@@ -119,4 +122,123 @@ def double_replicate_exclude_pop_1(
         num_replicates=2,
         random_seed=3,
     )
-    return Sample(out)
+    return MetaSample(out, populations, keep_populations)
+
+
+@pytest.fixture
+def single_replicate_meta(num_samples=4, populations=np.repeat([0, 1], 4)):
+    """
+    Generate a single replicate of two populations with msprime.
+    """
+    num_pop = len(set(populations))
+    population_config = [
+        ms.PopulationConfiguration(sample_size=num_samples)
+        for _ in range(num_pop)
+    ]
+    migration = np.full((num_pop, num_pop), 10.0)
+    np.fill_diagonal(migration, 0.0)
+    out = ms.simulate(
+        population_configurations=population_config,
+        migration_matrix=migration,
+        mutation_rate=0.5,
+        random_seed=3,
+    )
+    return MetaSample(out, populations)
+
+
+# single_replicate genotypes
+# array([[1, 1, 0, 1, 0],
+#        [0, 0, 0, 0, 0],
+#        [0, 0, 0, 0, 1],
+#        [0, 0, 1, 1, 0],
+#        [0, 0, 0, 0, 0],
+#        [0, 0, 0, 0, 0],
+#        [0, 0, 0, 0, 1],
+#        [0, 0, 0, 0, 1]])
+
+
+@pytest.fixture
+def double_replicate_meta(num_samples=4, populations=np.repeat([0, 1], 4)):
+    """
+    Generate a double replicate of two populations with msprime.
+    """
+    num_pop = len(set(populations))
+    population_config = [
+        ms.PopulationConfiguration(sample_size=num_samples)
+        for _ in range(num_pop)
+    ]
+    migration = np.full((num_pop, num_pop), 10.0)
+    np.fill_diagonal(migration, 0.0)
+    out = ms.simulate(
+        population_configurations=population_config,
+        migration_matrix=migration,
+        mutation_rate=0.5,
+        num_replicates=2,
+        random_seed=3,
+    )
+    return MetaSample(out, populations)
+
+
+# double_replicate genotypes
+# [array([[1, 1, 0, 1, 0],
+#         [0, 0, 0, 0, 0],
+#         [0, 0, 0, 0, 1],
+#         [0, 0, 1, 1, 0],
+#         [0, 0, 0, 0, 0],
+#         [0, 0, 0, 0, 0],
+#         [0, 0, 0, 0, 1],
+#         [0, 0, 0, 0, 1]]),
+#  array([[1, 0, 0, 0, 1, 0, 0],
+#         [0, 1, 1, 0, 0, 0, 0],
+#         [1, 0, 0, 0, 1, 0, 0],
+#         [1, 0, 0, 0, 1, 0, 0],
+#         [0, 0, 0, 0, 0, 1, 1],
+#         [1, 0, 0, 0, 1, 0, 0],
+#         [0, 0, 0, 1, 0, 0, 0],
+#         [0, 0, 0, 1, 0, 0, 0]])
+
+
+@pytest.fixture
+def double_replicate_meta_3_popl(
+    num_samples=4,
+    populations=np.repeat([0, 1, 2], 4),
+    keep_populations=np.array([0, 1]),
+):
+    """
+    Generate a triple replicate of two populations with msprime.
+    """
+    num_pop = len(set(populations))
+    population_config = [
+        ms.PopulationConfiguration(sample_size=num_samples)
+        for _ in range(num_pop)
+    ]
+    migration = np.full((num_pop, num_pop), 10.0)
+    np.fill_diagonal(migration, 0.0)
+    out = ms.simulate(
+        population_configurations=population_config,
+        migration_matrix=migration,
+        mutation_rate=0.1,
+        num_replicates=2,
+        random_seed=3,
+    )
+    out = MetaSample(out, populations, keep_populations)
+    return out
+
+
+# double_replicate genotypes
+# [array([[1, 1, 0, 1, 0],
+#         [0, 0, 0, 0, 0],
+#         [0, 0, 0, 0, 1],
+#         [0, 0, 1, 1, 0],
+#         [0, 0, 0, 0, 0],
+#         [0, 0, 0, 0, 0],
+#         [0, 0, 0, 0, 1],
+#         [0, 0, 0, 0, 1]]),
+#  array([[1, 0, 0, 0, 1, 0, 0],
+#         [0, 1, 1, 0, 0, 0, 0],
+#         [1, 0, 0, 0, 1, 0, 0],
+#         [1, 0, 0, 0, 1, 0, 0],
+#         [0, 0, 0, 0, 0, 1, 1],
+#         [1, 0, 0, 0, 1, 0, 0],
+#         [0, 0, 0, 1, 0, 0, 0],
+#         [0, 0, 0, 1, 0, 0, 0]])

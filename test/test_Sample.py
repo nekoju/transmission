@@ -147,9 +147,7 @@ def test_pi_two_reps(method, expected, double_replicate):
     [(np.array([[1, 1, 1, 2, 3]]), np.array([[4, 1, 1, 2, 4, 1, 1]]))],
 )
 def test_num_mutants(expected, double_replicate):
-    test = double_replicate.num_mutants(
-        populations=np.repeat(0, num_samples * num_pop)
-    )
+    test = double_replicate.num_mutants()
     assert all(np.array_equal(test[i], expected[i]) for i in range(len(test)))
 
 

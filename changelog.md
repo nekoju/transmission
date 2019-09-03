@@ -67,3 +67,7 @@
 
 - Worked on fixing math and generating new priors for demo.
 - Enable multiprocessing within module.
+
+## 0.0.12
+
+- Allow use of only a subset of simulated populations for MetaSample.
