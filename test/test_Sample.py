@@ -17,82 +17,15 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import msprime as ms
 import numpy as np
 import pytest
-from transmission.classes import Sample
 
+from transmission.fixtures import single_replicate
+from transmission.fixtures import double_replicate
+
+# These must match the args in transmission.fixtures.<>_replicate
 num_samples = 4
-
-
-@pytest.fixture
-def single_replicate():
-    """
-    Generate a single replicate of two populations with msprime.
-    """
-    population_config = [
-        ms.PopulationConfiguration(sample_size=num_samples) for _ in (0, 1)
-    ]
-    migration = np.full((2, 2), 10.0)
-    np.fill_diagonal(migration, 0.0)
-    out = ms.simulate(
-        population_configurations=population_config,
-        migration_matrix=migration,
-        mutation_rate=0.5,
-        random_seed=3,
-    )
-    return Sample(out)
-
-
-# single_replicate genotypes
-# array([[1, 1, 0, 1, 0],
-#        [0, 0, 0, 0, 0],
-#        [0, 0, 0, 0, 1],
-#        [0, 0, 1, 1, 0],
-#        [0, 0, 0, 0, 0],
-#        [0, 0, 0, 0, 0],
-#        [0, 0, 0, 0, 1],
-#        [0, 0, 0, 0, 1]])
-
-
-@pytest.fixture
-def double_replicate():
-    """
-    Generate a double replicate of two populations with msprime.
-    """
-    population_config = [
-        ms.PopulationConfiguration(sample_size=num_samples) for _ in (0, 1)
-    ]
-    migration = np.full((2, 2), 10.0)
-    np.fill_diagonal(migration, 0.0)
-    out = ms.simulate(
-        population_configurations=population_config,
-        migration_matrix=migration,
-        mutation_rate=0.5,
-        num_replicates=2,
-        random_seed=3,
-    )
-    return Sample(out)
-
-
-# double_replicate genotypes
-# [array([[1, 1, 0, 1, 0],
-#         [0, 0, 0, 0, 0],
-#         [0, 0, 0, 0, 1],
-#         [0, 0, 1, 1, 0],
-#         [0, 0, 0, 0, 0],
-#         [0, 0, 0, 0, 0],
-#         [0, 0, 0, 0, 1],
-#         [0, 0, 0, 0, 1]]),
-#  array([[1, 0, 0, 0, 1, 0, 0],
-#         [0, 1, 1, 0, 0, 0, 0],
-#         [1, 0, 0, 0, 1, 0, 0],
-#         [1, 0, 0, 0, 1, 0, 0],
-#         [0, 0, 0, 0, 0, 1, 1],
-#         [1, 0, 0, 0, 1, 0, 0],
-#         [0, 0, 0, 1, 0, 0, 0],
-#         [0, 0, 0, 1, 0, 0, 0]])
-
+num_pop = 2
 
 # single replicate
 @pytest.mark.parametrize(
@@ -215,7 +148,7 @@ def test_pi_two_reps(method, expected, double_replicate):
 )
 def test_num_mutants(expected, double_replicate):
     test = double_replicate.num_mutants(
-        populations=np.repeat(0, num_samples * 2)
+        populations=np.repeat(0, num_samples * num_pop)
     )
     assert all(np.array_equal(test[i], expected[i]) for i in range(len(test)))
 
