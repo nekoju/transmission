@@ -315,3 +315,16 @@ def test_polymorphic_exclude_pop_1(
 ):
     out = double_replicate_meta_exclude_pop_1.polymorphic(output="num")
     assert (expected == out).all()
+
+
+@pytest.mark.parametrize(
+    "expected, method",
+    [(np.array([2.0, 1.5]), "nei"), (np.array([2.66666667, 2.0]), "tajima")],
+)
+def test_pi_exclude_pop_1(
+    expected, method, double_replicate_meta_exclude_pop_1
+):
+    out = np.isclose(
+        expected, double_replicate_meta_exclude_pop_1.pi(pi_method=method)
+    )
+    assert out.all()
