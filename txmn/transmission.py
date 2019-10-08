@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# transmission: A tool for inferring endosymbiont biology from metagenome data.
+# txmn: A tool for inferring endosymbiont biology from metagenome data.
 # Copyright (C) 4-11-2018 Mark Juers
 
 # This program is free software; you can redistribute it and/or modify
@@ -26,7 +26,7 @@ from multiprocess import get_context, cpu_count
 import numpy as np
 from tqdm.autonotebook import tqdm
 
-from transmission.workers import _sim
+from txmn.workers import _sim
 
 
 def fst(Nm, tau, rho):
@@ -35,7 +35,7 @@ def fst(Nm, tau, rho):
 
     Args:
         Nm (float): The migration parameter Ne * m.
-        tau (float): The rate of vertical transmission.
+        tau (float): The rate of vertical txmn.
         rho (float): The proportion of the population that is female.
     """
 
@@ -64,7 +64,7 @@ def generate_priors(
 ):
     """
     Generate random sample summary using msprime for the specified prior
-    distributions of tau (vertical transmission rate) and rho (sex ratio).
+    distributions of tau (vertical txmn rate) and rho (sex ratio).
 
     From a supplied dict of prior (hyper)parameters, generate_priors generates a
     num_simulations-tall array of parameters with which to estimate the
@@ -90,7 +90,7 @@ def generate_priors(
             Sample.pi() documentation for details.
         prior_params (dict): A dict containing tuples specifiying the prior
             distribution parameters for eta, tau, and rho. That is, the
-            mutation rate multiplier, vertical transmission frequency, and
+            mutation rate multiplier, vertical txmn frequency, and
             sex ratio. Optionally one may provide a scalar value for eta to
             fix the mutation rate multiplier.
         num_replicates (int): Number of msprime replicates to run for each

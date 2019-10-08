@@ -1,4 +1,51 @@
-# first line: 49
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# txmn: A tool for inferring endosymbiont biology from metagenome data.
+# Copyright (C) 4-11-2018 Mark Juers
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+
+import functools
+from math import ceil
+
+import msprime as ms
+from multiprocessing import get_context, cpu_count
+import numpy as np
+from tqdm.autonotebook import tqdm
+
+from txmn.workers import _sim
+
+
+def fst(Nm, tau, rho):
+    """
+    Theoretical Fst from Nm, tau, and rho.
+
+    Args:
+        Nm (float): The migration parameter Ne * m.
+        tau (float): The rate of vertical txmn.
+        rho (float): The proportion of the population that is female.
+    """
+
+    A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
+    B = 2 * rho * (1 - rho) * (A + rho)
+
+    return B / (Nm + B)
+
+
 def generate_priors(
     nchrom,
     num_populations,
@@ -18,7 +65,7 @@ def generate_priors(
 ):
     """
     Generate random sample summary using msprime for the specified prior
-    distributions of tau (vertical transmission rate) and rho (sex ratio).
+    distributions of tau (vertical txmn rate) and rho (sex ratio).
 
     From a supplied dict of prior (hyper)parameters, generate_priors generates a
     num_simulations-tall array of parameters with which to estimate the
@@ -44,7 +91,7 @@ def generate_priors(
             Sample.pi() documentation for details.
         prior_params (dict): A dict containing tuples specifiying the prior
             distribution parameters for eta, tau, and rho. That is, the
-            mutation rate multiplier, vertical transmission frequency, and
+            mutation rate multiplier, vertical txmn frequency, and
             sex ratio. Optionally one may provide a scalar value for eta to
             fix the mutation rate multiplier.
         num_replicates (int): Number of msprime replicates to run for each
@@ -114,29 +161,28 @@ def generate_priors(
         # Switching here allows autodetection.
         if num_cores == "auto":
             num_cores = cpu_count()
-        chunksize = 10 
-        pool = get_context("spawn").Pool(processes=num_cores)
-        if progress_bar:
-            out = np.array(
-                list(
-                    tqdm(
+        limit = ceil(len(params) / num_cores)
+        chunksize = 1000 if limit >= 1000 else limit
+        with get_context("spawn").Pool(processes=num_cores) as pool:
+            if progress_bar:
+                out = np.array(
+                    list(
+                        tqdm(
+                            pool.imap_unordered(
+                                simpartial, params, chunksize=chunksize
+                            ),
+                            total=len(params),
+                        )
+                    )
+                )
+            else:
+                out = np.array(
+                    list(
                         pool.imap_unordered(
                             simpartial, params, chunksize=chunksize
-                        ),
-                        total=len(params),
+                        )
                     )
                 )
-            )
-        else:
-            out = np.array(
-                list(
-                    pool.imap_unordered(
-                        simpartial, params, chunksize=chunksize
-                    )
-                )
-            )
-        pool.close()
-        pool.join()
     else:
         out = np.apply_along_axis(simpartial, 1, params)
     out = np.core.records.fromarrays(out.T, dtype=structure)

@@ -2,7 +2,7 @@ from __future__ import print_function, division
 
 from joblib import Memory
 import msprime as ms
-import transmission as txmn
+import txmn as txmn
 import numpy as np
 import pandas as pd
 
@@ -11,7 +11,7 @@ if __name__ == "__main__":
     eta = 0.15  # Exponent of 10 representing the multiplicative difference
     # between the host's mutation rate and the symbiont's.
     tau = 0.75  # The fraction of new infections that result from vertical
-    # transmission.
+    # txmn.
     rho = 0.55  # The fraction of the population that is female.
 
     prior_seed = 3

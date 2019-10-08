@@ -6,14 +6,14 @@ import pypandoc
 
 pypandoc.convert_file("README.md", "rst", outputfile="README.rst")
 setup(
-    name="transmission-popgen",
+    name="txmn-popgen",
     version="0.0.12",
-    py_modules=["transmission"],
+    py_modules=["txmn"],
     description=(
-        "Tools for inferring symbiont transmission mode from"
+        "Tools for inferring symbiont txmn mode from"
         "metagenomic data"
     ),
-    url="http://github.com/mpjuers/transmission",
+    url="http://github.com/mpjuers/txmn",
     author="Mark Juers",
     author_email="mpjuers@indiana.edu",
     license="GPL>=3",
@@ -28,7 +28,7 @@ setup(
     ],
     entry_points="""
         [console_scripts]
-        transmission-priorgen=transmission.cli_tools:simulate_prior_stats
+        txmn-priorgen=txmn.cli_tools:simulate_prior_stats
     """,
     zip_safe=False,
 )

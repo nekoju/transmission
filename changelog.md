@@ -71,3 +71,4 @@
 ## 0.0.12
 
 - Allow use of only a subset of simulated populations for MetaSample.
+- Change package name to txmn.

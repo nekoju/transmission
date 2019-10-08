@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# transmission: A tool for inferring endosymbiont biology from metagenome data.
+# txmn: A tool for inferring endosymbiont biology from metagenome data.
 # Copyright (C) 4-11-2018 Mark Juers
 
 #    This program is free software: you can redistribute it and/or modify
@@ -20,10 +20,10 @@
 import numpy as np
 import pytest
 
-from transmission.fixtures import single_replicate
-from transmission.fixtures import double_replicate
+from txmn.fixtures import single_replicate
+from txmn.fixtures import double_replicate
 
-# These must match the args in transmission.fixtures.<>_replicate
+# These must match the args in txmn.fixtures.<>_replicate
 num_samples = 4
 num_pop = 2
 

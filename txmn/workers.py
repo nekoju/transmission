@@ -1,4 +1,9 @@
-# first line: 9
+import msprime as ms
+import numpy as np
+
+from txmn.classes import MetaSample
+
+
 def _sim(
     params,
     host_theta,

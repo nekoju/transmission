@@ -1,4 +1,4 @@
-# transmission: A tool for inferring endosymbiont biology from metagenome data.
+# txmn: A tool for inferring endosymbiont biology from metagenome data.
 # Copyright (C) 4-11-2018 Mark Juers
 
 # This program is free software; you can redistribute it and/or modify

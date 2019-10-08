@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# transmission: A tool for inferring endosymbiont biology from metagenome data.
+# txmn: A tool for inferring endosymbiont biology from metagenome data.
 # Copyright (C) 4-11-2018 Mark Juers
 
 #    This program is free software: you can redistribute it and/or modify
@@ -20,8 +20,8 @@
 import msprime as ms
 import numpy as np
 import pytest
-import transmission as trans
-import transmission.workers
+import txmn as trans
+import txmn.workers
 
 
 @pytest.mark.parametrize(
@@ -31,7 +31,7 @@ def test_sim_fst(Nm, tau, rho):
     nchrom = 24
     d = 10
     pops = [ms.PopulationConfiguration(nchrom) for _ in range(d)]
-    data = transmission.workers._sim(
+    data = txmn.workers._sim(
         params=(0, tau, rho),
         host_theta=1,
         host_Nm=Nm,

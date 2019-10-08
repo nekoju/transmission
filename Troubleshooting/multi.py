@@ -32,14 +32,14 @@ def main():
         ),
         setup=dedent(
             """
-            import transmission as txmn
+            import txmn as txmn
             import msprime as ms
             
 
             eta = 0.15  # Exponent of 10 representing the multiplicative difference
                         # between the host's mutation rate and the symbiont's.
             tau = 0.75  # The fraction of new infections that result from vertical
-                        # transmission.
+                        # txmn.
             rho = 0.55  # The fraction of the population that is female.
 
             prior_seed = 3

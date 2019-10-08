@@ -1,7 +1,7 @@
 # #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# transmission: A tool for inferring endosymbiont biology from metagenome data.
+# txmn: A tool for inferring endosymbiont biology from metagenome data.
 # Copyright (C) 31/12/2018 Mark Juers
 
 # This program is free software; you can redistribute it and/or modify
@@ -23,7 +23,7 @@ import pickle
 
 import click
 
-from transmission import generate_priors
+from txmn import generate_priors
 
 
 @click.command()
@@ -68,7 +68,7 @@ from transmission import generate_priors
     "num_simulations",
     default=10,
     type=int,
-    help="The number of independent transmission parameters to" " simulate.",
+    help="The number of independent txmn parameters to" " simulate.",
     show_default=True,
 )
 @click.option(
@@ -127,7 +127,7 @@ from transmission import generate_priors
     "--h_opts",
     default="{}",
     type=str,
-    help="options for transmission.Sample.h(), given as a sting"
+    help="options for txmn.Sample.h(), given as a sting"
     " representation of a dictionary.",
     show_default=True,
 )
