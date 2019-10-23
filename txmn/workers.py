@@ -12,6 +12,7 @@ def _sim(
     populations,
     stats,
     num_replicates,
+    migration=None,
     average_reps=True,
     theta_source="mt",
     h_opts={},
@@ -33,6 +34,9 @@ def _sim(
         stats (tuple): The requested statistics to be calculated. May contain
             any of "fst_mean", "fst_sd", "pi_h", "pi_nei", "pi_tajima",
             "theta_w", or "num_sites".
+        migration (np.ndarray): A np.ndarray with proportional migration
+            rate among demes. These values will be multiplied by Ne*m for the
+            actual migration rates.
         average_reps (bool): Whether to return averaged replicates. False will
             return raw summaries.
         num_replicates (int): Number of msprime replicates to run for each
@@ -42,6 +46,7 @@ def _sim(
             dictionary.
         **kwargs (): Extra arguments for msprime.simulate().
     """
+
     eta, tau, rho = params
     a = rho if theta_source == "mt" else 1
     A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
@@ -49,7 +54,7 @@ def _sim(
     symbiont_Nm = np.true_divide(host_Nm, 2 * B)
     symbiont_theta = np.true_divide(10 ** eta * host_theta, 2 * a * B)
     num_populations = len(population_config)
-    migration = np.full(
+    migration_null = np.full(
         (num_populations, num_populations),
         np.true_divide(
             # num_populations - 1 is multiplied by 2 to preserve the value of
@@ -58,7 +63,11 @@ def _sim(
             ((num_populations - 1) * 2),
         ),
     )
-    np.fill_diagonal(migration, 0)
+    np.fill_diagonal(migration_null, 0)
+    if migration is None:
+        migration = migration_null
+    else:
+        migration = migration_null * migration
     tree = ms.simulate(
         Ne=0.5,  # again, factor of 1/2 to preserve ms behavior
         num_replicates=num_replicates,
