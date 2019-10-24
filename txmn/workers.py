@@ -12,6 +12,7 @@ def _sim(
     populations,
     stats,
     num_replicates,
+    keep_populations=None,
     migration=None,
     average_reps=True,
     theta_source="mt",
@@ -76,7 +77,7 @@ def _sim(
         mutation_rate=symbiont_theta / 2,  # factor of 1/2 to preserve ms beh.
         **kwargs
     )
-    treesample = MetaSample(tree, populations)
+    treesample = MetaSample(tree, populations, keep_populations)
     out = (
         np.zeros((num_replicates, len(stats) + len(params)))
         if not average_reps
