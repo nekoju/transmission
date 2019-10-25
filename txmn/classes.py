@@ -176,8 +176,8 @@ class Sample(object):
             if self.type == "TreeSequence":
                 for siteidx, site in enumerate(replicate.variants()):
                     if by_population:
-                        for pop in self.keep_populations:
-                            num_mutants[pop, siteidx] = np.count_nonzero(
+                        for popidx, pop in enumerate(self.keep_populations):
+                            num_mutants[popidx, siteidx] = np.count_nonzero(
                                 site.genotypes[self.populations == pop]
                             )
                     else:
@@ -493,7 +493,7 @@ class MetaSample(Sample):
             )
             ht = self.h(**h_opts)
             ht = (x.reshape(-1) for x in ht)
-            fst = tuple((1 - np.true_divide(x, y)) for x, y in zip(hs, ht))
+            fst = tuple((1 - x / y) for x, y in zip(hs, ht))
             if average_sites:
                 stats = []
                 if "mean" in summary:
