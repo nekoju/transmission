@@ -199,13 +199,13 @@ def double_replicate_meta(num_samples=4, populations=np.repeat([0, 1], 4)):
 
 
 @pytest.fixture
-def double_replicate_meta_3_popl(
+def double_replicate_meta_3_popl_exclude_pop_2(
     num_samples=4,
     populations=np.repeat([0, 1, 2], 4),
     keep_populations=np.array([0, 1]),
 ):
     """
-    Generate a triple replicate of two populations with msprime.
+    Generate a double replicate of three populations with msprime.
     """
     num_pop = len(set(populations))
     population_config = [
@@ -226,19 +226,21 @@ def double_replicate_meta_3_popl(
 
 
 # double_replicate genotypes
-# [array([[1, 1, 0, 1, 0],
-#         [0, 0, 0, 0, 0],
-#         [0, 0, 0, 0, 1],
-#         [0, 0, 1, 1, 0],
-#         [0, 0, 0, 0, 0],
-#         [0, 0, 0, 0, 0],
-#         [0, 0, 0, 0, 1],
-#         [0, 0, 0, 0, 1]]),
-#  array([[1, 0, 0, 0, 1, 0, 0],
-#         [0, 1, 1, 0, 0, 0, 0],
-#         [1, 0, 0, 0, 1, 0, 0],
-#         [1, 0, 0, 0, 1, 0, 0],
-#         [0, 0, 0, 0, 0, 1, 1],
-#         [1, 0, 0, 0, 1, 0, 0],
-#         [0, 0, 0, 1, 0, 0, 0],
-#         [0, 0, 0, 1, 0, 0, 0]])
+# array([[1, 0, 1, 1, 1, 0, 1, 0, 0, 0],
+#        [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+#        [1, 0, 1, 1, 1, 0, 1, 0, 0, 0],
+#        [1, 0, 1, 1, 1, 0, 1, 0, 0, 0],
+#        [1, 0, 1, 1, 1, 0, 1, 0, 0, 0],
+#        [1, 0, 1, 1, 1, 0, 1, 0, 0, 0],
+#        [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+#        [0, 0, 0, 0, 0, 1, 0, 1, 1, 1]],
+#        dtype=uint8),
+# array([[0, 0, 0, 1, 0, 0],
+#        [0, 0, 0, 1, 0, 0],
+#        [0, 0, 0, 0, 0, 0],
+#        [0, 0, 0, 0, 0, 0],
+#        [1, 0, 0, 1, 1, 0],
+#        [0, 0, 0, 1, 0, 1],
+#        [0, 0, 0, 0, 0, 0],
+#        [0, 0, 0, 0, 0, 0]],
+#        dtype=uint8)]

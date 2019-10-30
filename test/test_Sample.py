@@ -20,8 +20,10 @@
 import numpy as np
 import pytest
 
+from txmn.base import polymorphic_to_dict
 from txmn.fixtures import single_replicate
 from txmn.fixtures import double_replicate
+from txmn.fixtures import double_replicate_meta_3_popl_exclude_pop_2
 
 # These must match the args in txmn.fixtures.<>_replicate
 num_samples = 4
@@ -52,12 +54,12 @@ def test_h_average_one_rep(bias, expected, single_replicate):
 
 
 @pytest.mark.parametrize(
-    "threshold, expected", [(0, 1.928374656), (1, 0.771349862)]
+    "polymorphic_opts, expected",
+    [({"threshold": 0}, 1.928374656), ({"threshold": 1}, 0.771349862)],
 )
-def test_theta_w_one_rep(threshold, expected, single_replicate):
+def test_theta_w_one_rep(polymorphic_opts, expected, single_replicate):
     assert np.isclose(
-        expected,
-        single_replicate.theta_w(by_population=False, threshold=threshold),
+        expected, single_replicate.theta_w(False, polymorphic_opts)
     )
 
 
@@ -119,14 +121,16 @@ def test_h_average_two_reps(bias, expected, double_replicate):
 
 
 @pytest.mark.parametrize(
-    "threshold, expected",
+    "polymorphic_opts, expected",
     [
-        (0, np.array([1.928374656, 2.699724518])),
-        (1, np.array([0.771349862, 1.157024793])),
+        ({"threshold": 0}, np.array([1.928374656, 2.699724518])),
+        ({"threshold": 1}, np.array([0.771349862, 1.157024793])),
     ],
 )
-def test_theta_w_two_reps(threshold, expected, double_replicate):
-    out = np.isclose(double_replicate.theta_w(threshold=threshold), expected)
+def test_theta_w_two_reps(polymorphic_opts, expected, double_replicate):
+    out = np.isclose(
+        double_replicate.theta_w(polymorphic_opts=polymorphic_opts), expected
+    )
     assert out.all()
 
 
@@ -154,28 +158,33 @@ def test_num_mutants(expected, double_replicate):
 @pytest.mark.parametrize(
     "expected",
     [
-        {
-            "which": (
-                (np.zeros(5, int), np.arange(5)),
-                (np.zeros(7, int), np.arange(7)),
-            ),
-            "num": (5, 7),
-        },
-        {
-            "which": (
-                (np.zeros(2, int), np.array([3, 4])),
-                (np.zeros(3, int), np.array([0, 3, 4])),
-            ),
-            "num": (2, 3),
-        },
+        (
+            {
+                "which": (
+                    (np.zeros(5, int), np.arange(5)),
+                    (np.zeros(7, int), np.arange(7)),
+                ),
+                "num": (5, 7),
+            },
+            {
+                "which": (
+                    (np.zeros(2, int), np.array([3, 4])),
+                    (np.zeros(3, int), np.array([0, 3, 4])),
+                ),
+                "num": (2, 3),
+            },
+        )
     ],
 )
 def test_polymorphic_two_reps(expected, double_replicate):
     test = double_replicate.polymorphic()
-    assert hash(frozenset(expected)) == hash(frozenset(test))
+    assert hash(frozenset(polymorphic_to_dict(expected))) == hash(
+        frozenset(polymorphic_to_dict(test))
+    )
 
 
 @pytest.mark.parametrize("expected", [np.array([5, 7])])
 def test_segsites_two_reps(expected, double_replicate):
     test = double_replicate.segsites()
     assert all(test == expected)
+

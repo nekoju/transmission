@@ -20,10 +20,11 @@
 import numpy as np
 import pytest
 
+from txmn.base import polymorphic_to_dict
 from txmn.fixtures import single_replicate_meta
 from txmn.fixtures import double_replicate_meta
 from txmn.fixtures import double_replicate_meta_exclude_pop_1
-from txmn.fixtures import double_replicate_meta_3_popl
+from txmn.fixtures import double_replicate_meta_3_popl_exclude_pop_2
 
 # These must match the args in txmn.fixtures.<>_replicate
 num_samples = 4
@@ -70,16 +71,15 @@ def test_h_average_one_rep(bias, expected, single_replicate_meta):
 
 
 @pytest.mark.parametrize(
-    "threshold, expected",
+    "polymorphic_opts, expected",
     [
-        (0, np.array([[2.727272727], [0.54545454]])),
-        (1, np.array([[0.54545454], [0.54545454]])),
+        ({"threshold": 0}, np.array([[2.727272727], [0.54545454]])),
+        ({"threshold": 1}, np.array([[0.54545454], [0.54545454]])),
     ],
 )
-def test_theta_w_one_rep(threshold, expected, single_replicate_meta):
+def test_theta_w_one_rep(polymorphic_opts, expected, single_replicate_meta):
     assert np.isclose(
-        expected,
-        single_replicate_meta.theta_w(by_population=True, threshold=threshold),
+        expected, single_replicate_meta.theta_w(True, polymorphic_opts)
     ).all()
 
 
@@ -160,29 +160,27 @@ def test_h_average_two_reps(bias, expected, double_replicate_meta):
 
 
 @pytest.mark.parametrize(
-    "by_population, threshold, expected",
+    "by_population, polymorphic_opts, expected",
     [
         (
             True,
-            0,
+            {"threshold": 0},
             np.array([[2.72727273, 2.18181818], [0.54545455, 2.72727273]]),
         ),
         (
             True,
-            1,
+            {"threshold": 1},
             np.array([[0.54545455, 1.09090909], [0.54545455, 0.54545455]]),
         ),
-        (False, 0, np.array([[1.928374656, 2.699724518]])),
-        (False, 1, np.array([[0.771349862, 1.157024793]])),
+        (False, {"threshold": 0}, np.array([[1.928374656, 2.699724518]])),
+        (False, {"threshold": 1}, np.array([[0.771349862, 1.157024793]])),
     ],
 )
 def test_theta_w_two_reps(
-    by_population, threshold, expected, double_replicate_meta
+    by_population, polymorphic_opts, expected, double_replicate_meta
 ):
     out = np.isclose(
-        double_replicate_meta.theta_w(
-            by_population=by_population, threshold=threshold
-        ),
+        double_replicate_meta.theta_w(by_population, polymorphic_opts),
         expected,
     )
     assert out.all()
@@ -210,27 +208,73 @@ def test_num_mutants(expected, double_replicate_meta):
 
 
 @pytest.mark.parametrize(
-    "expected",
+    "by_population, threshold, expected",
     [
-        {
-            "which": (
-                (np.zeros(5, int), np.arange(5)),
-                (np.zeros(7, int), np.arange(7)),
+        (
+            False,
+            0,
+            (
+                {"which": (np.zeros(5), np.arange(5)), "num": np.array([5])},
+                {"which": (np.zeros(7), np.arange(7)), "num": np.array([7])},
             ),
-            "num": (5, 7),
-        },
-        {
-            "which": (
-                (np.zeros(2, int), np.array([3, 4])),
-                (np.zeros(3, int), np.array([0, 3, 4])),
+        ),
+        (
+            False,
+            1,
+            (
+                {
+                    "which": (np.array([0, 0]), np.array([3, 4])),
+                    "num": np.array([2]),
+                },
+                {
+                    "which": (np.array([0, 0, 0]), np.array([0, 3, 4])),
+                    "num": np.array([3]),
+                },
             ),
-            "num": (2, 3),
-        },
+        ),
+        (
+            True,
+            0,
+            (
+                {
+                    "which": (
+                        np.array([0, 0, 0, 0, 0, 1]),
+                        np.array([0, 1, 2, 3, 4, 4]),
+                    ),
+                    "num": np.array([5, 1]),
+                },
+                {
+                    "which": (
+                        np.array([0, 0, 0, 0, 1, 1, 1, 1, 1]),
+                        np.array([0, 1, 2, 4, 0, 3, 4, 5, 6]),
+                    ),
+                    "num": np.array([4, 5]),
+                },
+            ),
+        ),
+        (
+            True,
+            1,
+            (
+                {
+                    "which": (np.array([0, 1]), np.array([3, 4])),
+                    "num": np.array([1, 1]),
+                },
+                {
+                    "which": (np.array([0, 0, 1]), np.array([0, 4, 3])),
+                    "num": (np.array([2, 1])),
+                },
+            ),
+        ),
     ],
 )
-def test_polymorphic_two_reps(expected, double_replicate_meta):
-    test = double_replicate_meta.polymorphic()
-    assert hash(frozenset(expected)) == hash(frozenset(test))
+def test_polymorphic_two_reps(
+    by_population, threshold, expected, double_replicate_meta
+):
+    test = tuple(double_replicate_meta.polymorphic(by_population, threshold))
+    assert hash(frozenset(polymorphic_to_dict(expected))) == hash(
+        frozenset(polymorphic_to_dict(test))
+    )
 
 
 @pytest.mark.parametrize("expected", [np.array([5, 7])])
@@ -298,8 +342,10 @@ def test_theta_w_exclude_pop_1(expected, double_replicate_meta_exclude_pop_1):
         )
     ],
 )
-def test_fst_exclude_pop_1(expected, double_replicate_meta_3_popl):
-    out = double_replicate_meta_3_popl.fst(
+def test_fst_exclude_pop_2(
+    expected, double_replicate_meta_3_popl_exclude_pop_2
+):
+    out = double_replicate_meta_3_popl_exclude_pop_2.fst(
         average_sites=False, h_opts={"bias": False}
     )
     test_results = tuple(
@@ -309,12 +355,33 @@ def test_fst_exclude_pop_1(expected, double_replicate_meta_3_popl):
     assert all(test_results)
 
 
-@pytest.mark.parametrize("expected", [np.array([[5, 4]])])
+@pytest.mark.parametrize(
+    "expected",
+    [
+        (
+            (
+                {
+                    "which": (np.array([1]), np.array([4])),
+                    "num": np.array([1]),
+                },
+                {
+                    "which": (
+                        np.array([1, 1, 1, 1, 1]),
+                        np.array([0, 3, 4, 5, 6]),
+                    ),
+                    "num": np.array([5]),
+                },
+            )
+        )
+    ],
+)
 def test_polymorphic_exclude_pop_1(
     expected, double_replicate_meta_exclude_pop_1
 ):
     out = double_replicate_meta_exclude_pop_1.polymorphic(output="num")
-    assert (expected == out).all()
+    assert hash(frozenset(polymorphic_to_dict(expected))) == hash(
+        frozenset(polymorphic_to_dict(out))
+    )
 
 
 @pytest.mark.parametrize(
@@ -328,3 +395,46 @@ def test_pi_exclude_pop_1(
         expected, double_replicate_meta_exclude_pop_1.pi(pi_method=method)
     )
     assert out.all()
+
+
+@pytest.mark.parametrize(
+    "expected",
+    [
+        (
+            np.array(
+                [
+                    [1, 0, 1, 1, 1, 0, 1, 0, 0, 0],
+                    [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                    [1, 0, 1, 1, 1, 0, 1, 0, 0, 0],
+                    [1, 0, 1, 1, 1, 0, 1, 0, 0, 0],
+                    [1, 0, 1, 1, 1, 0, 1, 0, 0, 0],
+                    [1, 0, 1, 1, 1, 0, 1, 0, 0, 0],
+                    [1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 1, 0, 1, 1, 1],
+                ],
+                dtype=np.uint8,
+            ),
+            np.array(
+                [
+                    [0, 1, 0, 0],
+                    [0, 1, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [1, 1, 1, 0],
+                    [0, 1, 0, 1],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                ],
+                dtype=np.uint8,
+            ),
+        )
+    ],
+)
+def test_filter_variants(expected, double_replicate_meta_3_popl_exclude_pop_2):
+    test = []
+    for rep in double_replicate_meta_3_popl_exclude_pop_2.filter_variants():
+        out = []
+        for site in rep:
+            out.append(site.genotypes)
+        test.append(np.array(out).T)
+    assert all((x == y).all() for x, y in zip(test, expected))

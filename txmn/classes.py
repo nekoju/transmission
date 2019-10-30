@@ -84,7 +84,9 @@ class Sample(object):
                 out.append(rep)
         return out if len(out) > 1 else out[0]
 
-    def h(self, average=False, bias=True, by_population=False):
+    def h(
+        self, average=False, bias=True, by_population=False, **polymorphic_opts
+    ):
 
         """
         Calculate heterozygosity over sites in sample.
@@ -95,7 +97,7 @@ class Sample(object):
             bias (bool): whether to apply bias-correction to calculations
             by_population (bool): whether to calculate heterozygosity by
                 population, or alternatively, as a metapopulation (H_T).
-            h_opts (dict): Extra arguments for self.h().
+            polymorphic_opts (dict): Extra arguments for Sample.polymorphic().
         """
 
         # Check if multiple populations are provided or desired
@@ -203,7 +205,7 @@ class Sample(object):
         # Return tuple if multiple replicates, otherwise single matrix.
         return tuple(out)
 
-    def pi(self, pi_method="h", h_opts={}, **kwargs):
+    def pi(self, pi_method="h", h_opts={}, polymorphic_opts={}, **kwargs):
         """
         Calculates different metrics of nucleotide diversity.
 
@@ -222,6 +224,7 @@ class Sample(object):
                     namely 'bias'.
             h_opts (dict): Extra arguments for self.h() in the form of a
                 kwargs dictionary.
+            polymorphic_opts (dict): Extra arguments for Sample.polymorphic().
         """
 
         out = np.zeros((len(self.popdata),))
@@ -273,13 +276,15 @@ class Sample(object):
                 # Formula: \sum{k_ij} / (nchrom choose 2)
                 out[repidx] = k / ((self.nchrom - 1) * self.nchrom / 2)
         elif pi_method == "h":
-            out = np.array([np.sum(x) for x in self.h(**h_opts)])
+            out = np.array(
+                [np.sum(x) for x in self.h(**h_opts, **polymorphic_opts)]
+            )
         else:
             raise NameError("Unsupported method, {}".format(pi_method))
         return out if out.size > 1 else out[0]
 
     def polymorphic(
-        self, by_population=False, threshold=0, output=("num", "which")
+        self, by_population=False, threshold=0, **polymorphic_opts
     ):
         """
         Returns polymorphism attributes as dict or value.
@@ -291,41 +296,22 @@ class Sample(object):
             threshold (int): Number of derived alleles
                 above which polymorphism is counted, e.g.,
                 threshold=1 excludes singletons.
-            output (tuple or str): Whether to output number of
-                polymorphic sites or index positions of polymorphic sites,
-                or both. Possible values are "num" returning number of sites,
-                "which" returning indices,
-                or a tuple of both (default) returning a dict of both.
+        Returns:
+            A tuple of dicts equal in length to the number of replicates.
+            Each dict contains "which", the index positions of polymorphic
+            loci in the form np.ndarray([pop]), np.ndarray([site]),
+            and "num", which contains the number of polymorphic sites in
+            each population.
         """
-        valid_outputs = ("which", "num")
-        snp_array = (
-            np.zeros(
-                (len(self.keep_populations), self.num_replicates), dtype=int
-            )
-            if by_population
-            else np.zeros((1, self.num_replicates), dtype=int)
-        )
-        which = []
         for repidx, rep in enumerate(
             self.num_mutants(by_population=by_population)
         ):
-            snp_array[:, repidx] = np.count_nonzero(rep > threshold, axis=1)
+            num = np.count_nonzero(rep > threshold, axis=1)
             # np.nonzero returns an array of *coordinates*.
             # Transpose for ordered pairs on rows.
-            snp_which = np.nonzero(rep > threshold)
-            which.append(snp_which)
-        results = {"which": tuple(which), "num": snp_array}
-        if type(output) == tuple and len(
-            set(output).intersection(set(valid_outputs))
-        ) == len(output):
-            return results
-        elif output in valid_outputs:
-            return results[output]
-        else:
-            raise ValueError(
-                "Invalid output, {output} specified."
-                "Specify 'num' or 'which'.".format(output=output)
-            )
+            which = np.nonzero(rep > threshold)
+            out = {"which": which, "num": num}
+            yield out
 
     def segsites(self):
         out = np.zeros(len(self.popdata), dtype=int)
@@ -336,16 +322,13 @@ class Sample(object):
                 out[repidx] = replicate.shape[1]
         return out[0] if out.size == 1 else out
 
-    def theta_w(self, by_population=False, threshold=0):
+    def theta_w(self, by_population=False, polymorphic_opts={}):
         """
         Calculate the Watterson estimator.
 
         Args:
             by_population (bool): Whether to compute theta_w per-population.
-            threshold (int): Sites with threshold or fewer derived alleles will
-                not be considered as SNPs, e.g., threshold=1 excludes
-                singletons.
-
+            polymorphic_opts (dict): Extra arguments for Sample.polymorphic().
         Returns:
             If by_population: npop X num_replicates np.ndarray
             If not by_population: 1 X num_replicates np.ndarray
@@ -354,19 +337,53 @@ class Sample(object):
         populations = (
             self.populations
             if by_population
-            else np.zeros((self.nchrom,), dtype=int)
+            else np.zeros((self.nchrom), dtype=int)
         )
         # populations for portability to MetaSample
-        nchrom = np.repeat(np.bincount(populations), self.num_replicates).T
-        harmonic_num = np.apply_along_axis(
-            lambda x: np.sum(1.0 / np.arange(1, x)), 1, nchrom.reshape((-1, 1))
+        nchrom = np.bincount(
+            populations[np.isin(populations, tuple(self.keep_populations))]
         )
-        num_polymorphic = self.polymorphic(
-            by_population=by_population, threshold=threshold, output="num"
+        nchrom = nchrom[np.nonzero(nchrom)]
+        harmonic_num = np.vectorize(lambda x: np.sum(1 / np.arange(1, x)))(
+            nchrom
+        ).reshape(len(self.keep_populations) if by_population else 1, 1)
+        num_polymorphic = np.zeros(
+            (
+                len(self.keep_populations) if by_population else 1,
+                self.num_replicates,
+            )
         )
-        return num_polymorphic / harmonic_num.reshape(
-            (-1, self.num_replicates)
-        )
+        for repidx, rep in enumerate(
+            self.polymorphic(by_population, **polymorphic_opts)
+        ):
+            num_polymorphic[:, repidx] = rep["num"]
+
+        return num_polymorphic / harmonic_num
+
+    def filter_variants(self):
+        """
+        Returns a generator yielding only sites that are polymorphic across
+        all populations.
+        """
+
+        def polymorphic_sites(variants, polymorphic):
+            """
+            For a replicate, filters out sites that are not polymorphic.
+            
+            Args:
+                variants (msprime TreeSequence)
+                polymorphic (np.ndarray): The indices of polymorphic sites.
+            """
+            for siteidx, site in enumerate(variants):
+                if siteidx in polymorphic:
+                    site.genotypes = site.genotypes[
+                        np.isin(self.populations, self.keep_populations)
+                    ]
+                    yield site
+
+        polymorphic = (x["which"][1] for x in self.polymorphic())
+        for rep in self.popdata:
+            yield polymorphic_sites(rep.variants(), next(polymorphic))
 
 
 class MetaSample(Sample):
@@ -456,6 +473,7 @@ class MetaSample(Sample):
         average_reps=False,
         average_sites=True,
         h_opts={},
+        polymorphic_opts={},
     ):
         """
         Returns specified fst statistic.
@@ -474,12 +492,13 @@ class MetaSample(Sample):
                 array. Redundant if not average_sites.
             h_opts (dict): Extra arguments for Sample.h(), in the form of a
                 kwargs dictionary.
+            polymorphic_opts (dict): Extra arguments for Sample.polymorphic().
         """
         if isinstance(summary, str):
             summary = (summary,)
         if fst_method == "gst":
             ind = np.where(self.segsites() != 0)[0]
-            h = self.h(by_population=True, **h_opts)
+            h = self.h(by_population=True, **h_opts, **polymorphic_opts)
             h_by_site = (h[i] for i in ind)
             hs = (
                 np.average(
@@ -491,7 +510,7 @@ class MetaSample(Sample):
                 )
                 for x in h_by_site
             )
-            ht = self.h(**h_opts)
+            ht = self.h(**h_opts, **polymorphic_opts)
             ht = (x.reshape(-1) for x in ht)
             fst = tuple((1 - x / y) for x, y in zip(hs, ht))
             if average_sites:

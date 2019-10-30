@@ -187,3 +187,16 @@ def generate_priors(
         out = np.apply_along_axis(simpartial, 1, params)
     out = np.core.records.fromarrays(out.T, dtype=structure)
     return out
+
+
+def polymorphic_to_dict(polymorphic_tuple):
+    """
+    Changes polymorphic_tuple from tuple of dicts to one dict.
+    """
+
+    which = []
+    num = []
+    for rep_dict in polymorphic_tuple:
+        which.append(rep_dict["which"])
+        num.append(rep_dict["num"])
+    return {"which": tuple(which), "num": tuple(num)}
