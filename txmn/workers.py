@@ -90,6 +90,8 @@ def _sim(
             summary=("mean", "sd"),
             h_opts=h_opts,
         )
+    if np.isnan(np.array(list(fst_summ.values()))).any():
+        breakpoint()
     for statidx, stat in enumerate(stats):
         if stat == "pi_h":
             out[:, statidx] = (

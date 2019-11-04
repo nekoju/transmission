@@ -46,16 +46,16 @@ class Sample(object):
         else:
             self.popdata = tuple(popdata for _ in (0,))
         if type(self.popdata[0]).__name__ == "TreeSequence":
-            self.nchrom = self.popdata[0].num_samples
+            self.nchrom = np.array(self.popdata[0].num_samples)
             self.type = "TreeSequence"
         else:
-            self.nchrom = self.popdata[0].shape[0]
+            self.nchrom = np.array(self.popdata[0].shape[0])
             self.type = "ndarray"
         self.populations = np.zeros(self.nchrom, dtype=int)
         self.npop = 1
-        self.pop_sample_sizes = np.array(self.nchrom)
+        self.pop_sample_sizes = np.array(self.nchrom).reshape((-1, 1))
         self.num_replicates = len(self.popdata)
-        self.keep_populations = set(self.populations)
+        self.keep_populations = np.array(sorted(list(set(self.populations))))
 
     def __str__(self):
         print(
@@ -110,29 +110,31 @@ class Sample(object):
         # Each row in harray is a population; each column a snp.
         sample_sizes = (
             self.pop_sample_sizes[
-                0,
                 np.isin(
-                    list(set(self.populations)), list(self.keep_populations)
+                    sorted(list(set(self.populations))),
+                    sorted(list(self.keep_populations)),
                 ),
             ]
             if by_population
             else np.sum(
-                self.pop_sample_sizes.reshape(1, -1)[
-                    0,
+                self.pop_sample_sizes[
                     np.isin(
-                        list(set(self.populations)),
+                        sorted(list(set(self.populations))),
                         list(self.keep_populations),
                     ),
                 ]
             )
         ).reshape(1, -1)
         out = []
-        for repidx, replicate in enumerate(self.popdata):
-            if replicate.num_sites != 0:
-                num_mutants = self.num_mutants(
-                    by_population=by_population, popdata=replicate
-                )[0]
-                parray = np.true_divide(num_mutants, sample_sizes.T)
+        num_mutants = self.num_mutants(by_population)
+        polymorphic = self.polymorphic(**polymorphic_opts)
+        for repidx, (replicate, poly) in enumerate(
+            zip(num_mutants, polymorphic)
+        ):
+            if replicate.shape[1] != 0:
+                parray = (np.true_divide(replicate, sample_sizes.T))[
+                    :, poly["which"][1]
+                ]
                 harray = 2 * parray * (1 - parray)
                 if bias:
                     harray = (
@@ -144,7 +146,7 @@ class Sample(object):
                 else:
                     out.append(harray)
             elif by_population:
-                out.append(np.full(self.npop, 0.0))
+                out.append(np.zeros((len(self.keep_populations), 0.0)))
             else:
                 out.append(np.full(1, 0.0))
         if not average:
@@ -166,7 +168,7 @@ class Sample(object):
         # Allows computation of single replicate snps.
         popdata = self.popdata if not popdata else (popdata,)
         out = []
-        for repidx, replicate in enumerate(popdata):
+        for repidx, replicate in enumerate(self.popdata):
             num_mutants = (
                 np.zeros(
                     (len(self.keep_populations), replicate.num_sites),
@@ -306,12 +308,34 @@ class Sample(object):
         for repidx, rep in enumerate(
             self.num_mutants(by_population=by_population)
         ):
-            num = np.count_nonzero(rep > threshold, axis=1)
+            num = np.count_nonzero(
+                np.logical_and(
+                    rep > threshold,
+                    (
+                        rep
+                        < (
+                            self.pop_sample_sizes[self.keep_populations]
+                            if by_population
+                            else self.nchrom
+                        )
+                    ),
+                ),
+                axis=1,
+            )
             # np.nonzero returns an array of *coordinates*.
             # Transpose for ordered pairs on rows.
-            which = np.nonzero(rep > threshold)
-            out = {"which": which, "num": num}
-            yield out
+            which = np.nonzero(
+                np.logical_and(
+                    rep > threshold,
+                    rep
+                    < (
+                        self.pop_sample_sizes[self.keep_populations]
+                        if by_population
+                        else self.nchrom
+                    ),
+                )
+            )
+            yield {"which": which, "num": num}
 
     def segsites(self):
         out = np.zeros(len(self.popdata), dtype=int)
@@ -360,13 +384,13 @@ class Sample(object):
 
         return num_polymorphic / harmonic_num
 
-    def filter_variants(self):
+    def filter_variants(self, polymorphic_opts={}):
         """
         Returns a generator yielding only sites that are polymorphic across
         all populations.
         """
 
-        def polymorphic_sites(variants, polymorphic):
+        def polymorphic_sites_generator(variants, polymorphic):
             """
             For a replicate, filters out sites that are not polymorphic.
             
@@ -381,9 +405,11 @@ class Sample(object):
                     ]
                     yield site
 
-        polymorphic = (x["which"][1] for x in self.polymorphic())
-        for rep in self.popdata:
-            yield polymorphic_sites(rep.variants(), next(polymorphic))
+        polymorphic_sites = (
+            x["which"][1] for x in self.polymorphic(**polymorphic_opts)
+        )
+        for rep, poly_site in zip(self.popdata, polymorphic_sites):
+            yield polymorphic_sites_generator(rep.variants(), poly_site)
 
 
 class MetaSample(Sample):
@@ -457,14 +483,16 @@ class MetaSample(Sample):
                     for x in set(populations)
                 ]
             ]
-        )
+        ).reshape(-1, 1)
         self.populations = populations
         self.keep_populations = (
-            set(populations) if keep_populations is None else keep_populations
+            np.array(sorted(list(set(populations))))
+            if keep_populations is None
+            else np.array(sorted(list(set(keep_populations)))).reshape(-1)
         )
-        self.nchrom = np.count_nonzero(
-            np.isin(self.populations, tuple(self.keep_populations))
-        )
+        self.nchrom = np.array(
+            np.count_nonzero(np.isin(self.populations, self.keep_populations))
+        ).reshape(-1)
 
     def fst(
         self,
@@ -505,8 +533,8 @@ class MetaSample(Sample):
                     x,
                     axis=0,
                     weights=self.pop_sample_sizes[
-                        0, tuple(self.keep_populations)
-                    ],
+                        self.keep_populations
+                    ].reshape(-1),
                 )
                 for x in h_by_site
             )
