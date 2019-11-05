@@ -314,7 +314,10 @@ class Sample(object):
                     (
                         rep
                         < (
-                            self.pop_sample_sizes[self.keep_populations]
+                            (
+                                self.pop_sample_sizes[self.keep_populations]
+                                - threshold
+                            )
                             if by_population
                             else self.nchrom
                         )
@@ -329,7 +332,10 @@ class Sample(object):
                     rep > threshold,
                     rep
                     < (
-                        self.pop_sample_sizes[self.keep_populations]
+                        (
+                            self.pop_sample_sizes[self.keep_populations]
+                            - threshold
+                        )
                         if by_population
                         else self.nchrom
                     ),

@@ -170,7 +170,7 @@ def test_h_average_two_reps(bias, expected, double_replicate_meta):
         (
             True,
             {"threshold": 1},
-            np.array([[0.54545455, 1.09090909], [0.54545455, 0.54545455]]),
+            np.array([[0.54545455, 0.0], [0.54545455, 0.54545455]]),
         ),
         (False, {"threshold": 0}, np.array([[1.928374656, 2.699724518]])),
         (False, {"threshold": 1}, np.array([[0.771349862, 1.157024793]])),
