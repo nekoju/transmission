@@ -89,8 +89,7 @@ from txmn import generate_priors
     help="A dict formatted as a string containing"
     " hyperparameters for distributions of eta, tau, and rho"
     " The distribution of eta is normal (mean, sd),"
-    " while tau and rho are beta with pararmeters (a, b). rho uses"
-    " a nonstandard beta distribution with support (0, 2).",
+    " while tau and rho are beta with pararmeters (a, b).",
     show_default=True,
 )
 @click.option(
@@ -134,8 +133,6 @@ from txmn import generate_priors
 @click.argument("outfile", type=click.File("wb"))
 def simulate_prior_stats(
     nchrom,
-    num_populations,
-    host_Nm,
     host_theta,
     num_simulations,
     num_replicates,
