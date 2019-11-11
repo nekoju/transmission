@@ -68,7 +68,10 @@ def _sim(
     if migration is None:
         migration = migration_null
     else:
-        migration = migration_null * migration
+        # Constant by which to multiply each row to preserve relationship
+        # between migration matrix and host_Nm.
+        migration_constants = host_Nm / np.sum(migration, 1)
+        migration = migration * migration_constants
     tree = ms.simulate(
         Ne=0.5,  # again, factor of 1/2 to preserve ms behavior
         num_replicates=num_replicates,
