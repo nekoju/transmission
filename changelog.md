@@ -72,3 +72,5 @@
 
 - Allow use of only a subset of simulated populations for MetaSample.
 - Change package name to txmn.
+- Fix to properly calculate migration rates from host_Nm with different
+  migration models.
