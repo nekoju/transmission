@@ -20,8 +20,8 @@
 import msprime as ms
 import numpy as np
 import pytest
-import txmn as trans
-import txmn.workers
+import txmn
+from txmn.workers import _sim
 
 
 @pytest.mark.parametrize(
@@ -31,7 +31,7 @@ def test_sim_fst(Nm, tau, rho):
     nchrom = 24
     d = 10
     pops = [ms.PopulationConfiguration(nchrom) for _ in range(d)]
-    data = txmn.workers._sim(
+    data = _sim(
         params=(0, tau, rho),
         host_theta=1,
         host_Nm=Nm,
@@ -42,4 +42,4 @@ def test_sim_fst(Nm, tau, rho):
         num_replicates=10,
         average_reps=True,
     )
-    assert np.isclose(data[0], trans.fst(Nm, tau, rho), rtol=0.10)
+    assert np.isclose(data[0], txmn.fst(Nm, tau, rho), rtol=0.10)
