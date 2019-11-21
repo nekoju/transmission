@@ -1,7 +1,7 @@
 # #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# txmn: A tool for inferring endosymbiont biology from metagenome data.
+# transmission: A tool for inferring endosymbiont biology from metagenome data.
 # Copyright (C) 31/12/2018 Mark Juers
 
 # This program is free software; you can redistribute it and/or modify
