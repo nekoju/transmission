@@ -76,7 +76,7 @@ def _sim(
     symbiont_Nm = np.true_divide(host_Nm, 2 * B)
     symbiont_theta = np.true_divide(10 ** eta * host_theta, 2 * a * B)
     num_populations = len(population_config)
-    migration_null = np.full(
+    migration_island = np.full(
         (num_populations, num_populations),
         np.true_divide(
             # num_populations - 1 is multiplied by 2 to preserve the value of
@@ -85,14 +85,14 @@ def _sim(
             ((num_populations - 1) * 2),
         ),
     )
-    np.fill_diagonal(migration_null, 0)
+    np.fill_diagonal(migration_island, 0)
     if migration is None:
-        migration = migration_null
+        migration = migration_island
     else:
         # Constant by which to multiply each row to preserve relationship
         # between migration matrix and host_Nm.
-        migration_constants = host_Nm / np.sum(migration, 1)
-        migration = migration * migration_constants
+        migration_constants = symbiont_Nm / np.sum(migration, 1)
+        migration = migration * migration_constants / 2
     tree = ms.simulate(
         Ne=0.5,  # again, factor of 1/2 to preserve ms behavior
         num_replicates=num_replicates,
