@@ -167,7 +167,9 @@ class Sample(object):
                 else:
                     out.append(harray)
             elif by_population:
-                out.append(np.zeros((len(self.keep_populations), 0.0)))
+                out.append(
+                    np.zeros((len(self.keep_populations), 1), dtype=float)
+                )
             else:
                 out.append(np.full(1, 0.0))
         if not average:
