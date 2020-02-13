@@ -70,19 +70,17 @@ def _sim(
     """
 
     eta, tau, rho = params
-    a = rho if theta_source == "mt" else 1
-    A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
-    B = 2 * rho * (1 - rho) * (A + rho)
-    symbiont_Nm = np.true_divide(host_Nm, 2 * B)
-    symbiont_theta = np.true_divide(10 ** eta * host_theta * a, 2 * B)
+    A = tau ** 2 * (1 + rho) + rho * (1 - 2 * tau)
+    symbiont_Nm = np.true_divide(host_Nm, A)
+    symbiont_theta = np.true_divide(10 ** eta * host_theta, A)
     num_populations = len(population_config)
     migration_island = np.full(
         (num_populations, num_populations),
         np.true_divide(
-            # num_populations - 1 is multiplied by 2 to preserve the value of
+            # num_populations - 1 is multiplied by 4 to preserve the value of
             # 2*Nm during the simulation as ms does.
             symbiont_Nm,
-            ((num_populations - 1) * 2),
+            ((num_populations - 1) * 4),
         ),
     )
     np.fill_diagonal(migration_island, 0)
@@ -91,8 +89,9 @@ def _sim(
     else:
         # Constant by which to multiply each row to preserve relationship
         # between migration matrix and host_Nm.
+        # This allows relative migration rates to be used.
         migration_constants = symbiont_Nm / np.sum(migration, 1)
-        migration = migration * migration_constants / 2
+        migration = migration * migration_constants / 4
     tree = ms.simulate(
         Ne=0.5,  # again, factor of 1/2 to preserve ms behavior
         num_replicates=num_replicates,

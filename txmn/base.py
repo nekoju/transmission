@@ -40,10 +40,11 @@ def fst(Nm, tau, rho):
         rho (float): The proportion of the population that is female.
     """
 
-    A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
-    B = 2 * rho * (1 - rho) * (A + rho)
+    # A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
+    # B = 2 * rho * (1 - rho) * (A + rho)
+    A = tau ** 2 * (1 + rho) + rho * (1 - 2 * tau)
 
-    return B / (Nm + B)
+    return A / (2 * Nm * rho * (2 * tau * (tau - 1) + 1) + A)
 
 
 def generate_priors(
