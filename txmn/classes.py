@@ -556,7 +556,6 @@ class MetaSample(Sample):
         if fst_method == "gst":
             ind = np.where(self.segsites() != 0)[0]
             h = self.h(by_population=True, **h_opts, **polymorphic_opts)
-            h_by_site = (h[i] for i in ind)
             hs = (
                 np.average(
                     x,
@@ -565,7 +564,7 @@ class MetaSample(Sample):
                         self.keep_populations
                     ].reshape(-1),
                 )
-                for x in h_by_site
+                for x in h
             )
             ht = self.h(**h_opts, **polymorphic_opts)
             ht = (x.reshape(-1) for x in ht)

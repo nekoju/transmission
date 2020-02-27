@@ -30,21 +30,19 @@ from tqdm.autonotebook import tqdm
 from txmn.workers import _sim
 
 
-def fst(Nm, tau, rho):
+def fst(host_Nm, tau, rho):
     """
     Theoretical Fst from Nm, tau, and rho.
 
     Args:
-        Nm (float): The migration parameter Ne * m.
+        host_Nm (float): The migration parameter Ne * m.
         tau (float): The rate of vertical transmission.
         rho (float): The proportion of the population that is female.
     """
 
-    # A = tau ** 2 * (3 - 2 * tau) * (1 - rho)
-    # B = 2 * rho * (1 - rho) * (A + rho)
-    A = tau ** 2 * (1 + rho) + rho * (1 - 2 * tau)
+    A = tau + rho * (1 - rho * tau) * (1 - tau) ** 2
 
-    return A / (2 * Nm * rho * (2 * tau * (tau - 1) + 1) + A)
+    return A / (2 * host_Nm * rho + A)
 
 
 def generate_priors(

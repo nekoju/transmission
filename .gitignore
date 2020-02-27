@@ -142,3 +142,4 @@ build
 **/Cache
 **/profileOutput
 Cache
+**/.tags

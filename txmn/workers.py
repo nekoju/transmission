@@ -21,6 +21,7 @@
 
 import msprime as ms
 import numpy as np
+from numpy import linalg
 
 from txmn.classes import MetaSample
 
@@ -48,7 +49,8 @@ def _sim(
     Args:
         params (tuple): eta, tau, rho for simulation.
         host_theta (float): Estimate of host theta (2*Ne*mu*L) for host.
-        host_Nm (float): Estimate of host migration parameter (Ne*m).
+        host_Nm (float): Estimate of host mitochondrial migration
+            parameter (Ne*m).
         population_config (list): List of population configurations for
             msprime.
         populations (np.ndarray): A nchrom np.ndarray indicating to which
@@ -70,34 +72,35 @@ def _sim(
     """
 
     eta, tau, rho = params
-    A = tau ** 2 * (1 + rho) + rho * (1 - 2 * tau)
-    symbiont_Nm = np.true_divide(host_Nm, A)
-    symbiont_theta = np.true_divide(10 ** eta * host_theta, A)
+    A = tau + rho * (1 - rho * tau) * (1 - tau) ** 2
+    symbiont_Nm = np.true_divide(host_Nm * rho, A)
+    symbiont_theta = np.true_divide(10 ** eta * host_theta * rho, A)
     num_populations = len(population_config)
-    migration_island = np.full(
-        (num_populations, num_populations),
-        np.true_divide(
-            # num_populations - 1 is multiplied by 4 to preserve the value of
-            # 2*Nm during the simulation as ms does.
-            symbiont_Nm,
-            ((num_populations - 1) * 4),
-        ),
-    )
-    np.fill_diagonal(migration_island, 0)
     if migration is None:
-        migration = migration_island
+        migration = np.full(
+            (num_populations, num_populations),
+            np.true_divide(symbiont_Nm, (num_populations - 1)),
+        )
+        np.fill_diagonal(migration, 0)
+    elif not np.all(migration == migration.T):
+        raise NotImplementedError("Migration matrix must be symmetrical.")
     else:
         # Constant by which to multiply each row to preserve relationship
         # between migration matrix and host_Nm.
         # This allows relative migration rates to be used.
-        migration_constants = symbiont_Nm / np.sum(migration, 1)
-        migration = migration * migration_constants / 4
+        m_inv = linalg.inv(migration)
+        migration_constant = (
+            np.ones((1, num_populations), dtype=float)
+            @ m_inv
+            @ np.full((num_populations, 1), symbiont_Nm)
+        ) / num_populations
+        migration = migration * migration_constant
     tree = ms.simulate(
-        Ne=0.5,  # again, factor of 1/2 to preserve ms behavior
+        Ne=rho / (2 * A),
         num_replicates=num_replicates,
         migration_matrix=migration,
         population_configurations=population_config,
-        mutation_rate=symbiont_theta / 2,  # factor of 1/2 to preserve ms beh.
+        mutation_rate=symbiont_theta / 2,
         **kwargs
     )
     treesample = MetaSample(tree, populations, keep_populations)

@@ -33,7 +33,7 @@ def test_sim_fst(Nm, tau, rho):
     pops = [ms.PopulationConfiguration(nchrom) for _ in range(d)]
     data = _sim(
         params=(0, tau, rho),
-        host_theta=1,
+        host_theta=0.1,
         host_Nm=Nm,
         stats=("fst_mean",),
         population_config=pops,
