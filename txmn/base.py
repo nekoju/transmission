@@ -40,9 +40,11 @@ def fst(host_Nm, tau, rho):
         rho (float): The proportion of the population that is female.
     """
 
-    A = tau + rho * (1 - rho * tau) * (1 - tau) ** 2
-
-    return A / (2 * host_Nm * rho + A)
+    symbiont_Nm = (
+        (host_Nm * rho) 
+        / (tau + rho * (1 - tau) ** 2 * (1 - rho) + rho ** 2 * (1 - tau) ** 3)
+    )
+    return 1 / (2 * symbiont_Nm + 1)
 
 
 def generate_priors(
