@@ -22,7 +22,7 @@
 ARG BASE_CONTAINER=jupyter/r-notebook
 FROM $BASE_CONTAINER
 
-LABEL maintainer="Mark Juers <mpjuers@indiana.edu>"
+LABEL maintainer="Neko Juers <njuers@iu.edu>"
 
 RUN mkdir Transmission
 COPY --chown=1000 ./ Transmission/
